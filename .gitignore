@@ -32,10 +32,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# UV
-.uv/
-uv.lock
-
 # Environment variables
 .env
 .env.local
