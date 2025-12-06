@@ -10,9 +10,6 @@ runner_instance_name = "github-runner"  # Name of your existing VM
 runner_manager_image = "nakamasato/gha-vm-self-hosted-runner:latest"
 queue_name           = "runner-controller"
 
-# GitHub Webhook Secret (keep this secret!)
-github_webhook_secret = "your-webhook-secret-here"
-
 # VM Auto-stop Configuration
 inactive_minutes = "15"
 

@@ -35,12 +35,6 @@ variable "queue_name" {
   default     = "runner-controller"
 }
 
-variable "github_webhook_secret" {
-  description = "GitHub webhook secret for signature verification"
-  type        = string
-  sensitive   = true
-}
-
 variable "inactive_minutes" {
   description = "Minutes of inactivity before stopping the VM"
   type        = string

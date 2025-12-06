@@ -135,6 +135,12 @@ resource "google_cloud_run_v2_service_iam_member" "runner_manager_invoker" {
   member   = "allUsers"
 }
 
+# Generate random webhook secret
+resource "random_string" "webhook_secret" {
+  length  = 32
+  special = false
+}
+
 # Secret Manager: GitHub Webhook Secret
 resource "google_secret_manager_secret" "webhook_secret" {
   project   = var.project
@@ -147,7 +153,7 @@ resource "google_secret_manager_secret" "webhook_secret" {
 
 resource "google_secret_manager_secret_version" "webhook_secret_version" {
   secret      = google_secret_manager_secret.webhook_secret.id
-  secret_data = var.github_webhook_secret
+  secret_data = random_string.webhook_secret.result
 }
 
 # IAM: Allow Cloud Run to access webhook secret
