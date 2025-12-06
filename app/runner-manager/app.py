@@ -23,6 +23,11 @@ INACTIVE_MINUTES = int(os.getenv("INACTIVE_MINUTES", "15"))
 SERVICE_URL = os.getenv("SERVICE_URL")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
 
+# Target labels for runner filtering (comma-separated)
+# Example: "self-hosted,linux" or "self-hosted"
+TARGET_LABELS_STR = os.getenv("TARGET_LABELS", "self-hosted")
+TARGET_LABELS = [label.strip() for label in TARGET_LABELS_STR.split(",") if label.strip()]
+
 # Validate required environment variables
 required_vars = {
     "GCP_PROJECT_ID": PROJECT_ID,
@@ -117,11 +122,29 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
     logger.info(f"Received GitHub event: {event}, action: {payload.get('action')}")
 
     if event == "workflow_job" and payload.get("action") == "queued":
-        # VM起動（必要なら）
-        await start_runner_if_needed()
+        # Check if this job matches our target labels
+        workflow_job = payload.get("workflow_job", {})
+        job_labels = workflow_job.get("labels", [])
 
-        # 古いstopタスクを削除して新しいタスクをスケジュール
-        await schedule_stop_task()
+        # Check if all target labels are present in job labels
+        has_all_target_labels = all(label in job_labels for label in TARGET_LABELS)
+
+        logger.info(
+            f"Job labels: {job_labels}, Target labels: {TARGET_LABELS}, "
+            f"Match: {has_all_target_labels}, Runner: {workflow_job.get('runner_name', 'N/A')}"
+        )
+
+        if has_all_target_labels:
+            # VM起動（必要なら）
+            await start_runner_if_needed()
+
+            # 古いstopタスクを削除して新しいタスクをスケジュール
+            await schedule_stop_task()
+        else:
+            logger.info(
+                f"Skipping VM management: job labels {job_labels} do not match "
+                f"target labels {TARGET_LABELS}"
+            )
 
     return {"status": "ok"}
 
@@ -219,4 +242,5 @@ async def root():
         "instance": INSTANCE_NAME,
         "zone": ZONE,
         "inactive_minutes": INACTIVE_MINUTES,
+        "target_labels": TARGET_LABELS,
     }

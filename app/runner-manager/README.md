@@ -99,6 +99,35 @@ Service information.
 }
 ```
 
+## Label Filtering
+
+The Runner Manager can be configured to only respond to jobs with specific labels using the `TARGET_LABELS` environment variable.
+
+**How it works:**
+- The service checks the `labels` field in the `workflow_job` webhook payload
+- VM is only started if **ALL** target labels are present in the job labels
+- Default: `self-hosted` (manages any self-hosted runner job)
+
+**Examples:**
+
+```bash
+# Manage any self-hosted job (default)
+TARGET_LABELS=self-hosted
+
+# Only manage Linux self-hosted jobs
+TARGET_LABELS=self-hosted,linux
+
+# Only manage GPU-enabled Linux self-hosted jobs
+TARGET_LABELS=self-hosted,linux,gpu
+```
+
+**Workflow configuration:**
+```yaml
+jobs:
+  build:
+    runs-on: [self-hosted, linux, gpu]  # Must match TARGET_LABELS
+```
+
 ## Environment Variables
 
 | Variable | Description | Required | Example |
@@ -111,6 +140,7 @@ Service information.
 | `SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | Yes | `your-secret` |
 | `INACTIVE_MINUTES` | Minutes before auto-stop | No | `15` (default) |
+| `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
 
 ## Development
 
