@@ -1,0 +1,29 @@
+# GCP Project Configuration
+project = "your-gcp-project-id"
+zone    = "asia-northeast1-a"
+
+# GitHub Runner VM Configuration
+runner_instance_name = "github-runner"
+runner_machine_type  = "e2-standard-2"
+runner_disk_size_gb  = 20
+
+# GitHub Configuration
+github_runner_token_secret = "github-runner-token"  # Secret Manager secret name
+github_org                 = "your-github-org"
+github_repo                = null # Omit for org-wide runner, or set to "your-repo"
+
+# Runner Manager Configuration
+runner_manager_image = "nakamasato/gha-vm-self-hosted-runner:latest"
+queue_name           = "runner-controller"
+
+# GitHub Webhook Secret (keep this secret!)
+github_webhook_secret = "your-webhook-secret-here"
+
+# VM Auto-stop Configuration
+inactive_minutes = "15"
+
+# Target Labels (comma-separated)
+target_labels = "self-hosted"
+# Examples:
+# target_labels = "self-hosted,linux"
+# target_labels = "self-hosted,linux,gpu"
