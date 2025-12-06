@@ -1,1 +1,246 @@
-# gha-vm-self-hosted-runner
+# GHA VM Self-Hosted Runner
+
+Cost-efficient GitHub Actions self-hosted runner on GCP with automatic VM lifecycle management.
+
+## Motivation
+
+This project addresses common challenges when running GitHub Actions self-hosted runners on GCP:
+
+- **Cost Optimization**: Only run VMs when needed. Automatically stop VMs after periods of inactivity to minimize compute costs.
+- **IP Address Control**: Manage static IP requirements for accessing restricted resources (databases, APIs with IP allowlists, etc.).
+- **Simplicity**: Simple and straightforward setup using Terraform and a lightweight Cloud Run service.
+
+By combining GCP VM instances with Cloud Run and Cloud Tasks, this solution provides:
+- Pay only for what you use (VM only runs during active workflows)
+- Automatic startup when workflows are queued
+- Automatic shutdown after configurable inactivity period (default: 15 minutes)
+- Persistent runner configuration across VM restarts
+
+### When to Use This vs. Actions Runner Controller
+
+For **large-scale deployments** with high workflow concurrency and dynamic scaling needs, consider using [Actions Runner Controller](https://docs.github.com/en/actions/concepts/runners/actions-runner-controller) (ARC) on Kubernetes. ARC excels at managing fleets of runners with auto-scaling capabilities.
+
+This project is ideal for:
+- **Personal development** or small team projects with moderate workflow frequency
+- **Static IP requirements**: Scenarios where workflows need to access IP-restricted resources (databases, APIs, internal services with allowlists)
+- **Simpler infrastructure**: Teams who want runner management without the complexity of Kubernetes
+- **Cost-conscious projects**: Minimizing costs by running a single persistent VM that starts/stops automatically
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph GitHub
+        GH[GitHub Actions Workflow]
+        WH[Webhook: workflow_job.queued]
+    end
+
+    subgraph "GCP - Cloud Run"
+        CR[Runner Manager Service]
+        EP1["/github/webhook"]
+        EP2["/runner/start"]
+        EP3["/runner/stop"]
+    end
+
+    subgraph "GCP - Cloud Tasks"
+        CT[Task Queue]
+        TASK[Stop VM Task<br/>Scheduled +15min]
+    end
+
+    subgraph "GCP - Compute Engine"
+        VM[GitHub Runner VM]
+        RUNNER[Actions Runner Service]
+    end
+
+    GH -->|triggers| WH
+    WH -->|POST| EP1
+    EP1 -->|1. Start VM if needed| EP2
+    EP1 -->|2. Schedule stop task| CT
+    EP2 -->|Compute API| VM
+    CT -->|After 15min| TASK
+    TASK -->|POST| EP3
+    EP3 -->|Compute API| VM
+    VM -.->|runs| RUNNER
+    RUNNER -.->|executes| GH
+
+    style CR fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
+    style VM fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
+    style CT fill:#fbbc04,stroke:#333,stroke-width:2px
+```
+
+### Flow
+
+1. **Workflow Queued**: GitHub sends a `workflow_job.queued` webhook event to Cloud Run
+2. **VM Start**: Runner Manager starts the VM if it's not already running
+3. **Schedule Stop**: Creates/updates a Cloud Task to stop the VM after 15 minutes of inactivity
+4. **Execute Workflow**: The runner executes the queued workflow
+5. **Auto Stop**: If no new workflows arrive within 15 minutes, Cloud Tasks triggers VM shutdown
+6. **Repeat**: Each new workflow resets the 15-minute timer
+
+## Features
+
+- **Automatic VM Lifecycle Management**: Start on demand, stop after inactivity
+- **Cost Efficient**: Pay only for compute time during active workflows
+- **Persistent Configuration**: Runner configuration survives VM restarts
+- **Flexible Scope**: Support both organization-wide and repository-specific runners
+- **Infrastructure as Code**: Everything managed via Terraform
+- **Secure Token Management**: GitHub runner tokens stored in Secret Manager
+- **Configurable Inactivity Timeout**: Customize shutdown delay to match your workflow patterns
+
+## Usage
+
+### Prerequisites
+
+- GCP Project with billing enabled
+- GitHub organization or repository access
+- Terraform installed
+- `gcloud` CLI configured
+- Docker Hub account (for custom image builds)
+
+### Quick Start
+
+1. **Create GitHub Runner Token and store in Secret Manager**:
+   ```bash
+   # Generate token from GitHub UI (Settings > Actions > Runners > New runner)
+   echo -n "YOUR_RUNNER_TOKEN" | gcloud secrets create github-runner-token \
+     --project=YOUR_PROJECT_ID \
+     --data-file=-
+   ```
+
+2. **Deploy Runner VM**:
+   ```bash
+   cd terraform/github-runner-vm
+   terraform init
+   terraform apply
+   ```
+
+3. **Deploy Runner Manager**:
+   ```bash
+   cd terraform/github-runner-manager
+   terraform init
+   terraform apply
+   ```
+
+4. **Configure GitHub Webhook**:
+   - Go to your GitHub organization/repository Settings > Webhooks
+   - Add webhook with Cloud Run URL: `https://your-service-url.run.app/github/webhook`
+   - Select event: `Workflow jobs`
+   - Configure webhook secret
+
+## CI/CD
+
+### GitHub Actions Workflows
+
+The project includes automated CI/CD pipelines:
+
+#### Docker Build and Push
+- **Workflow**: `.github/workflows/docker-publish.yml`
+- **Triggers**:
+  - Push to `main` branch
+  - New version tags (`v*`)
+  - Pull requests (build only, no push)
+  - Manual workflow dispatch
+- **Features**:
+  - Multi-platform builds (amd64, arm64)
+  - Automatic tagging strategy (latest, semver, sha)
+  - Docker Hub description sync
+  - GitHub Actions cache for faster builds
+
+**Required Secrets**:
+- `DOCKER_HUB_USERNAME`: Docker Hub username
+- `DOCKER_HUB_TOKEN`: Docker Hub access token
+
+#### Linting
+- **Workflow**: `.github/workflows/lint.yml`
+- **Triggers**: Push and pull requests affecting app code
+- **Tools**: Ruff (Python linter and formatter)
+
+### Setting Up Secrets
+
+1. Create a Docker Hub access token:
+   - Go to [Docker Hub Account Settings](https://hub.docker.com/settings/security)
+   - Click "New Access Token"
+   - Name it (e.g., "github-actions") and copy the token
+
+2. Add secrets to your GitHub repository:
+   - Go to repository Settings > Secrets and variables > Actions
+   - Add `DOCKER_HUB_USERNAME` with your Docker Hub username
+   - Add `DOCKER_HUB_TOKEN` with the access token
+
+### Using the Docker Image
+
+Pull the pre-built image from Docker Hub:
+
+**For production:**
+```bash
+docker pull nakamasato/gha-vm-self-hosted-runner:latest
+```
+
+**For development/testing:**
+```bash
+docker pull nakamasato/gha-vm-self-hosted-runner-dev:latest
+```
+
+**Available tags:**
+
+*PROD (`nakamasato/gha-vm-self-hosted-runner`):*
+- `latest`: Latest release version
+- `v1.0.0`, `v1.0`, `v1`: Semantic version tags (from git tags)
+
+*DEV (`nakamasato/gha-vm-self-hosted-runner-dev`):*
+- `latest`: Latest build from main branch
+- `main`: Main branch builds
+- `main-<sha>`: Commit-specific builds
+- `pr-<number>`: Pull request builds
+
+## Details
+
+This project consists of three main components:
+
+### 1. [GitHub Runner VM](./terraform/github-runner-vm/)
+
+Terraform module that creates a persistent GCP Compute Engine VM configured as a GitHub Actions self-hosted runner.
+
+- Creates VM instance with customizable machine type and disk size
+- Automatically installs and configures GitHub Actions runner on first boot
+- Supports both organization-wide and repository-specific runners
+- Retrieves runner token from Secret Manager
+- Includes startup script for automatic runner initialization
+
+[See detailed documentation →](./terraform/github-runner-vm/README.md)
+
+### 2. [Runner Manager](./app/runner-manager/)
+
+FastAPI-based Cloud Run service that manages VM lifecycle in response to GitHub webhooks.
+
+**Endpoints**:
+- `POST /github/webhook` - Receives GitHub webhook events
+- `POST /runner/start` - Starts the runner VM
+- `POST /runner/stop` - Stops the runner VM
+
+**Functionality**:
+- Validates GitHub webhook signatures
+- Starts VM when workflows are queued
+- Schedules automatic VM shutdown using Cloud Tasks
+- Updates shutdown schedule on each new workflow (keeps VM alive while active)
+
+[See detailed documentation →](./app/runner-manager/README.md)
+
+### 3. [Runner Manager Infrastructure](./terraform/github-runner-manager/)
+
+Terraform configuration for deploying the Runner Manager service on GCP.
+
+- Cloud Run service for the manager application
+- Cloud Tasks queue for scheduled VM shutdown
+- Service account with necessary IAM permissions
+- Integration with Compute Engine API and Cloud Tasks API
+
+[See detailed documentation →](./terraform/github-runner-manager/README.md)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+## License
+
+MIT License - see LICENSE file for details
