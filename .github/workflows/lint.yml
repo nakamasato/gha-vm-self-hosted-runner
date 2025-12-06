@@ -31,15 +31,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        working-directory: ./app/runner-manager
-        run: |
-          uv pip install --system ruff
-
       - name: Run Ruff (check)
         working-directory: ./app/runner-manager
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Run Ruff (format check)
         working-directory: ./app/runner-manager
-        run: ruff format --check .
+        run: uv run ruff format --check .
