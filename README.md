@@ -193,6 +193,28 @@ docker pull nakamasato/gha-vm-self-hosted-runner-dev:latest
 - `main-<sha>`: Commit-specific builds
 - `pr-<number>`: Pull request builds
 
+## Development
+
+### Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install the git hooks
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
+```
+
+The pre-commit configuration includes:
+- **Ruff**: Python linter with auto-fix
+- **Ruff Format**: Python code formatter
+- **Standard hooks**: Trailing whitespace, end-of-file-fixer, YAML checks, etc.
+
 ## Details
 
 This project consists of three main components:
