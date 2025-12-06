@@ -46,3 +46,9 @@ variable "target_labels" {
   type        = string
   default     = "self-hosted"
 }
+
+variable "deletion_protection" {
+  description = "Enable deletion protection for Cloud Run service"
+  type        = bool
+  default     = true
+}

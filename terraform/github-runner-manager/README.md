@@ -59,6 +59,7 @@ runner_manager_image = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
 queue_name           = "runner-controller"
 inactive_minutes     = "15"                   # VM auto-stop timeout
 target_labels        = "self-hosted"          # Job label filtering
+deletion_protection  = true                   # Prevent accidental deletion
 ```
 
 ### 2. Deploy Infrastructure
@@ -250,6 +251,17 @@ VM costs are separate and depend on your machine type and usage.
 
 To destroy all resources created by this module:
 
+**If deletion_protection is enabled (default):**
+```bash
+# First, disable deletion protection
+# Set deletion_protection = false in terraform.tfvars
+terraform apply
+
+# Then destroy
+terraform destroy
+```
+
+**If deletion_protection is disabled:**
 ```bash
 terraform destroy
 ```
@@ -275,9 +287,10 @@ module "github_runner_manager" {
   runner_instance_name = "github-runner"
 
   # Optional
-  region               = "asia-northeast1"
-  inactive_minutes     = "15"
-  target_labels        = "self-hosted,linux"
+  region              = "asia-northeast1"
+  inactive_minutes    = "15"
+  target_labels       = "self-hosted,linux"
+  deletion_protection = true
 }
 
 output "webhook_url" {

@@ -18,3 +18,6 @@ target_labels = "self-hosted"
 # Examples:
 # target_labels = "self-hosted,linux"
 # target_labels = "self-hosted,linux,gpu"
+
+# Deletion Protection
+deletion_protection = true  # Set to false to allow terraform destroy without extra steps

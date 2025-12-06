@@ -50,10 +50,10 @@ resource "google_cloud_tasks_queue" "runner_controller" {
 
 # Cloud Run Service
 resource "google_cloud_run_v2_service" "runner_manager" {
-  project            = var.project
-  name               = local.service_name
-  location           = local.region
-  deletion_protection = true
+  project             = var.project
+  name                = local.service_name
+  location            = local.region
+  deletion_protection = var.deletion_protection
 
   template {
     service_account = google_service_account.runner_manager.email
