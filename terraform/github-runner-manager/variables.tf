@@ -3,45 +3,23 @@ variable "project" {
   type        = string
 }
 
+variable "region" {
+  description = "GCP region for Cloud Run and Cloud Tasks"
+  type        = string
+  default     = "asia-northeast1"
+}
+
 variable "zone" {
-  description = "GCP zone for the runner VM"
+  description = "GCP zone where the runner VM is located"
   type        = string
   default     = "asia-northeast1-a"
 }
 
-# GitHub Runner VM Configuration
+# Existing Runner VM Configuration
 variable "runner_instance_name" {
-  description = "Name of the GitHub runner VM instance"
+  description = "Name of the existing GitHub runner VM instance"
   type        = string
   default     = "github-runner"
-}
-
-variable "runner_machine_type" {
-  description = "Machine type for the runner VM"
-  type        = string
-  default     = "e2-standard-2"
-}
-
-variable "runner_disk_size_gb" {
-  description = "Boot disk size for the runner VM in GB"
-  type        = number
-  default     = 20
-}
-
-variable "github_runner_token_secret" {
-  description = "Secret Manager secret name containing the GitHub runner token"
-  type        = string
-}
-
-variable "github_org" {
-  description = "GitHub organization name"
-  type        = string
-}
-
-variable "github_repo" {
-  description = "GitHub repository name (optional, omit for org-wide runner)"
-  type        = string
-  default     = null
 }
 
 # Runner Manager Configuration

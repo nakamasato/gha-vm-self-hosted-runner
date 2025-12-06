@@ -1,16 +1,10 @@
 # GCP Project Configuration
 project = "your-gcp-project-id"
+region  = "asia-northeast1"
 zone    = "asia-northeast1-a"
 
-# GitHub Runner VM Configuration
-runner_instance_name = "github-runner"
-runner_machine_type  = "e2-standard-2"
-runner_disk_size_gb  = 20
-
-# GitHub Configuration
-github_runner_token_secret = "github-runner-token"  # Secret Manager secret name
-github_org                 = "your-github-org"
-github_repo                = null # Omit for org-wide runner, or set to "your-repo"
+# Existing Runner VM Configuration
+runner_instance_name = "github-runner"  # Name of your existing VM
 
 # Runner Manager Configuration
 runner_manager_image = "nakamasato/gha-vm-self-hosted-runner:latest"

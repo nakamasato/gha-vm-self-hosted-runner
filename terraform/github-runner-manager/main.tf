@@ -1,28 +1,11 @@
 locals {
   service_name = "github-runner-manager"
-  region       = "asia-northeast1"
+  region       = var.region
 }
 
-# GitHub Runner VM
-module "github_runner_vm" {
-  source = "../github-runner-vm"
-
-  project       = var.project
-  instance_name = var.runner_instance_name
-  machine_type  = var.runner_machine_type
-  zone          = var.zone
-
-  boot_disk_size_gb = var.runner_disk_size_gb
-
-  # GitHub runner configuration
-  github_runner_token_secret = var.github_runner_token_secret
-  github_org                 = var.github_org
-  github_repo                = var.github_repo
-
-  labels = {
-    purpose = "github-runner"
-    managed = "terraform"
-  }
+# Data source for project
+data "google_project" "current" {
+  project_id = var.project
 }
 
 # Service Account for Runner Manager (Cloud Run)
@@ -173,9 +156,4 @@ resource "google_secret_manager_secret_iam_member" "runner_manager_webhook_secre
   secret_id = google_secret_manager_secret.webhook_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.runner_manager.member
-}
-
-# Data source for project
-data "google_project" "current" {
-  project_id = var.project
 }
