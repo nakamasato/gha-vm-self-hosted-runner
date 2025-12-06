@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Environment variables
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-ZONE = os.getenv("GCP_ZONE")
-INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
-LOCATION = os.getenv("GCP_LOCATION")
-QUEUE_NAME = os.getenv("QUEUE_NAME")
-INACTIVE_MINUTES = int(os.getenv("INACTIVE_MINUTES", "15"))
-SERVICE_URL = os.getenv("SERVICE_URL")
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+VM_INSTANCE_ZONE = os.getenv("VM_INSTANCE_ZONE")
+VM_INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
+CLOUD_TASK_LOCATION = os.getenv("CLOUD_TASK_LOCATION")
+CLOUD_TASK_QUEUE_NAME = os.getenv("CLOUD_TASK_QUEUE_NAME")
+VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "15"))
+CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
 
 # Target labels for runner filtering (comma-separated)
@@ -30,12 +30,12 @@ TARGET_LABELS = [label.strip() for label in TARGET_LABELS_STR.split(",") if labe
 
 # Validate required environment variables
 required_vars = {
-    "GCP_PROJECT_ID": PROJECT_ID,
-    "GCP_ZONE": ZONE,
-    "VM_INSTANCE_NAME": INSTANCE_NAME,
-    "GCP_LOCATION": LOCATION,
-    "QUEUE_NAME": QUEUE_NAME,
-    "SERVICE_URL": SERVICE_URL,
+    "GCP_PROJECT_ID": GCP_PROJECT_ID,
+    "VM_INSTANCE_ZONE": VM_INSTANCE_ZONE,
+    "VM_INSTANCE_NAME": VM_INSTANCE_NAME,
+    "CLOUD_TASK_LOCATION": CLOUD_TASK_LOCATION,
+    "CLOUD_TASK_QUEUE_NAME": CLOUD_TASK_QUEUE_NAME,
+    "CLOUD_RUN_SERVICE_URL": CLOUD_RUN_SERVICE_URL,
     "GITHUB_WEBHOOK_SECRET": GITHUB_WEBHOOK_SECRET,
 }
 
@@ -93,14 +93,18 @@ def verify_signature(payload: bytes, signature_header: str) -> bool:
 async def start_runner_if_needed():
     """Start the runner VM if it's not already running."""
     try:
-        instance = compute_client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
+        instance = compute_client.get(
+            project=GCP_PROJECT_ID, zone=VM_INSTANCE_ZONE, instance=VM_INSTANCE_NAME
+        )
 
         if instance.status != "RUNNING":
-            logger.info(f"Starting VM instance: {INSTANCE_NAME}")
-            operation = compute_client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
+            logger.info(f"Starting VM instance: {VM_INSTANCE_NAME}")
+            operation = compute_client.start(
+                project=GCP_PROJECT_ID, zone=VM_INSTANCE_ZONE, instance=VM_INSTANCE_NAME
+            )
             logger.info(f"VM start operation initiated: {operation.name}")
         else:
-            logger.info(f"VM instance {INSTANCE_NAME} is already running")
+            logger.info(f"VM instance {VM_INSTANCE_NAME} is already running")
 
     except Exception as e:
         logger.error(f"Error starting VM: {e}")
@@ -153,15 +157,19 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 async def start_runner():
     """VMを起動"""
     try:
-        logger.info(f"Start endpoint called for VM: {INSTANCE_NAME}")
-        instance = compute_client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
+        logger.info(f"Start endpoint called for VM: {VM_INSTANCE_NAME}")
+        instance = compute_client.get(
+            project=GCP_PROJECT_ID, zone=VM_INSTANCE_ZONE, instance=VM_INSTANCE_NAME
+        )
 
         if instance.status != "RUNNING":
-            logger.info(f"Starting VM instance: {INSTANCE_NAME}")
-            operation = compute_client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
+            logger.info(f"Starting VM instance: {VM_INSTANCE_NAME}")
+            operation = compute_client.start(
+                project=GCP_PROJECT_ID, zone=VM_INSTANCE_ZONE, instance=VM_INSTANCE_NAME
+            )
             return {"status": "starting", "operation": operation.name}
 
-        logger.info(f"VM instance {INSTANCE_NAME} is already running")
+        logger.info(f"VM instance {VM_INSTANCE_NAME} is already running")
         return {"status": "already_running"}
 
     except Exception as e:
@@ -173,15 +181,19 @@ async def start_runner():
 async def stop_runner():
     """VMを停止"""
     try:
-        logger.info(f"Stop endpoint called for VM: {INSTANCE_NAME}")
-        instance = compute_client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
+        logger.info(f"Stop endpoint called for VM: {VM_INSTANCE_NAME}")
+        instance = compute_client.get(
+            project=GCP_PROJECT_ID, zone=VM_INSTANCE_ZONE, instance=VM_INSTANCE_NAME
+        )
 
         if instance.status == "RUNNING":
-            logger.info(f"Stopping VM instance: {INSTANCE_NAME}")
-            operation = compute_client.stop(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
+            logger.info(f"Stopping VM instance: {VM_INSTANCE_NAME}")
+            operation = compute_client.stop(
+                project=GCP_PROJECT_ID, zone=VM_INSTANCE_ZONE, instance=VM_INSTANCE_NAME
+            )
             return {"status": "stopping", "operation": operation.name}
 
-        logger.info(f"VM instance {INSTANCE_NAME} is already stopped")
+        logger.info(f"VM instance {VM_INSTANCE_NAME} is already stopped")
         return {"status": "already_stopped"}
 
     except Exception as e:
@@ -192,8 +204,8 @@ async def stop_runner():
 async def schedule_stop_task():
     """15分後にstopを実行するCloud Taskを作成（古いタスクは削除）"""
     try:
-        parent = tasks_client.queue_path(PROJECT_ID, LOCATION, QUEUE_NAME)
-        task_name = f"{parent}/tasks/stop-{INSTANCE_NAME}"
+        parent = tasks_client.queue_path(GCP_PROJECT_ID, CLOUD_TASK_LOCATION, CLOUD_TASK_QUEUE_NAME)
+        task_name = f"{parent}/tasks/stop-{VM_INSTANCE_NAME}"
 
         # 既存のタスクを削除（存在すれば）
         try:
@@ -203,15 +215,15 @@ async def schedule_stop_task():
             logger.debug(f"No existing task to delete: {e}")
 
         # 15分後のタスクを作成
-        schedule_time = datetime.now(timezone.utc) + timedelta(minutes=INACTIVE_MINUTES)
+        schedule_time = datetime.now(timezone.utc) + timedelta(minutes=VM_INACTIVE_MINUTES)
 
         task = {
             "name": task_name,
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
-                "url": f"{SERVICE_URL}/runner/stop",
+                "url": f"{CLOUD_RUN_SERVICE_URL}/runner/stop",
                 "oidc_token": {
-                    "service_account_email": f"runner-controller@{PROJECT_ID}.iam.gserviceaccount.com"
+                    "service_account_email": f"runner-controller@{GCP_PROJECT_ID}.iam.gserviceaccount.com"
                 },
             },
             "schedule_time": schedule_time,
@@ -239,8 +251,8 @@ async def root():
     """Root endpoint with basic info"""
     return {
         "service": "GitHub Runner Manager",
-        "instance": INSTANCE_NAME,
-        "zone": ZONE,
-        "inactive_minutes": INACTIVE_MINUTES,
+        "instance": VM_INSTANCE_NAME,
+        "zone": VM_INSTANCE_ZONE,
+        "inactive_minutes": VM_INACTIVE_MINUTES,
         "target_labels": TARGET_LABELS,
     }

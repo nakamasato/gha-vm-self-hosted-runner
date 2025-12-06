@@ -68,7 +68,7 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name  = "GCP_ZONE"
+        name  = "VM_INSTANCE_ZONE"
         value = var.zone
       }
 
@@ -78,17 +78,22 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name  = "GCP_LOCATION"
+        name  = "VM_INACTIVE_MINUTES"
+        value = var.inactive_minutes
+      }
+
+      env {
+        name  = "CLOUD_TASK_LOCATION"
         value = local.region
       }
 
       env {
-        name  = "QUEUE_NAME"
+        name  = "CLOUD_TASK_QUEUE_NAME"
         value = var.queue_name
       }
 
       env {
-        name  = "SERVICE_URL"
+        name  = "CLOUD_RUN_SERVICE_URL"
         value = "https://${local.service_name}-${data.google_project.current.number}.${local.region}.run.app"
       }
 
@@ -100,11 +105,6 @@ resource "google_cloud_run_v2_service" "runner_manager" {
             version = "latest"
           }
         }
-      }
-
-      env {
-        name  = "INACTIVE_MINUTES"
-        value = var.inactive_minutes
       }
 
       env {

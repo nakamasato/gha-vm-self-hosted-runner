@@ -133,13 +133,13 @@ jobs:
 | Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
 | `GCP_PROJECT_ID` | GCP project ID | Yes | `my-project` |
-| `GCP_ZONE` | VM instance zone | Yes | `asia-northeast1-a` |
+| `VM_INSTANCE_ZONE` | VM instance zone | Yes | `asia-northeast1-a` |
 | `VM_INSTANCE_NAME` | VM instance name | Yes | `github-runner` |
-| `GCP_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
-| `QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-controller` |
-| `SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
+| `VM_INACTIVE_MINUTES` | Minutes before auto-stop | No | `15` (default) |
+| `CLOUD_TASK_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
+| `CLOUD_TASK_QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-controller` |
+| `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | Yes | `your-secret` |
-| `INACTIVE_MINUTES` | Minutes before auto-stop | No | `15` (default) |
 | `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
 
 ## Development
@@ -162,11 +162,12 @@ jobs:
 
    # Or export variables directly:
    export GCP_PROJECT_ID=your-project
-   export GCP_ZONE=asia-northeast1-a
+   export VM_INSTANCE_ZONE=asia-northeast1-a
    export VM_INSTANCE_NAME=github-runner
-   export GCP_LOCATION=asia-northeast1
-   export QUEUE_NAME=runner-controller
-   export SERVICE_URL=http://localhost:8080
+   export VM_INACTIVE_MINUTES=15
+   export CLOUD_TASK_LOCATION=asia-northeast1
+   export CLOUD_TASK_QUEUE_NAME=runner-controller
+   export CLOUD_RUN_SERVICE_URL=http://localhost:8080
    export GITHUB_WEBHOOK_SECRET=your-secret
    ```
 
@@ -205,11 +206,12 @@ docker build -t github-runner-manager .
 ```bash
 docker run -p 8080:8080 \
   -e GCP_PROJECT_ID=your-project \
-  -e GCP_ZONE=asia-northeast1-a \
+  -e VM_INSTANCE_ZONE=asia-northeast1-a \
   -e VM_INSTANCE_NAME=github-runner \
-  -e GCP_LOCATION=asia-northeast1 \
-  -e QUEUE_NAME=runner-controller \
-  -e SERVICE_URL=http://localhost:8080 \
+  -e VM_INACTIVE_MINUTES=15 \
+  -e CLOUD_TASK_LOCATION=asia-northeast1 \
+  -e CLOUD_TASK_QUEUE_NAME=runner-controller \
+  -e CLOUD_RUN_SERVICE_URL=http://localhost:8080 \
   -e GITHUB_WEBHOOK_SECRET=your-secret \
   github-runner-manager
 ```
@@ -225,7 +227,7 @@ gcloud run deploy github-runner-manager \
   --image nakamasato/gha-vm-self-hosted-runner:latest \
   --platform managed \
   --region asia-northeast1 \
-  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,GCP_ZONE=ZONE,VM_INSTANCE_NAME=NAME,GCP_LOCATION=LOCATION,QUEUE_NAME=QUEUE,GITHUB_WEBHOOK_SECRET=SECRET \
+  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,VM_INSTANCE_ZONE=ZONE,VM_INSTANCE_NAME=NAME,VM_INACTIVE_MINUTES=15,CLOUD_TASK_LOCATION=LOCATION,CLOUD_TASK_QUEUE_NAME=QUEUE,CLOUD_RUN_SERVICE_URL=SERVICE_URL,GITHUB_WEBHOOK_SECRET=SECRET \
   --service-account runner-controller@PROJECT_ID.iam.gserviceaccount.com \
   --allow-unauthenticated
 ```
@@ -237,7 +239,7 @@ gcloud run deploy github-runner-manager-dev \
   --image nakamasato/gha-vm-self-hosted-runner-dev:latest \
   --platform managed \
   --region asia-northeast1 \
-  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,GCP_ZONE=ZONE,VM_INSTANCE_NAME=NAME,GCP_LOCATION=LOCATION,QUEUE_NAME=QUEUE,GITHUB_WEBHOOK_SECRET=SECRET \
+  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,VM_INSTANCE_ZONE=ZONE,VM_INSTANCE_NAME=NAME,VM_INACTIVE_MINUTES=15,CLOUD_TASK_LOCATION=LOCATION,CLOUD_TASK_QUEUE_NAME=QUEUE,CLOUD_RUN_SERVICE_URL=SERVICE_URL,GITHUB_WEBHOOK_SECRET=SECRET \
   --service-account runner-controller@PROJECT_ID.iam.gserviceaccount.com \
   --allow-unauthenticated
 ```
@@ -253,7 +255,7 @@ gcloud run deploy github-runner-manager \
   --image gcr.io/PROJECT_ID/github-runner-manager \
   --platform managed \
   --region asia-northeast1 \
-  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,GCP_ZONE=ZONE,VM_INSTANCE_NAME=NAME,GCP_LOCATION=LOCATION,QUEUE_NAME=QUEUE,GITHUB_WEBHOOK_SECRET=SECRET \
+  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,VM_INSTANCE_ZONE=ZONE,VM_INSTANCE_NAME=NAME,VM_INACTIVE_MINUTES=15,CLOUD_TASK_LOCATION=LOCATION,CLOUD_TASK_QUEUE_NAME=QUEUE,CLOUD_RUN_SERVICE_URL=SERVICE_URL,GITHUB_WEBHOOK_SECRET=SECRET \
   --service-account runner-controller@PROJECT_ID.iam.gserviceaccount.com \
   --allow-unauthenticated
 ```
@@ -268,13 +270,13 @@ import hmac, hashlib, os
 
 app = FastAPI()
 
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-ZONE = os.getenv("GCP_ZONE")
-INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
-LOCATION = os.getenv("GCP_LOCATION")
-QUEUE_NAME = os.getenv("QUEUE_NAME")
-INACTIVE_MINUTES = os.getenv("INACTIVE_MINUTES", "15")
-SERVICE_URL = os.getenv("SERVICE_URL")  # Cloud RunのURL
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+VM_INSTANCE_ZONE = os.getenv("VM_INSTANCE_ZONE")
+VM_INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
+VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "15"))
+CLOUD_TASK_LOCATION = os.getenv("CLOUD_TASK_LOCATION")
+CLOUD_TASK_QUEUE_NAME = os.getenv("CLOUD_TASK_QUEUE_NAME")
+CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
 
 tasks_client = tasks_v2.CloudTasksClient()
 compute_client = compute_v1.InstancesClient()
