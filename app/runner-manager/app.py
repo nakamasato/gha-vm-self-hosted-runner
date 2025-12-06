@@ -73,11 +73,7 @@ def verify_signature(payload: bytes, signature_header: str) -> bool:
         return False
 
     # Calculate expected signature
-    mac = hmac.new(
-        GITHUB_WEBHOOK_SECRET.encode(),
-        msg=payload,
-        digestmod=hashlib.sha256
-    )
+    mac = hmac.new(GITHUB_WEBHOOK_SECRET.encode(), msg=payload, digestmod=hashlib.sha256)
     expected_signature = mac.hexdigest()
 
     # Constant-time comparison to prevent timing attacks
@@ -92,19 +88,11 @@ def verify_signature(payload: bytes, signature_header: str) -> bool:
 async def start_runner_if_needed():
     """Start the runner VM if it's not already running."""
     try:
-        instance = compute_client.get(
-            project=PROJECT_ID,
-            zone=ZONE,
-            instance=INSTANCE_NAME
-        )
+        instance = compute_client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
 
         if instance.status != "RUNNING":
             logger.info(f"Starting VM instance: {INSTANCE_NAME}")
-            operation = compute_client.start(
-                project=PROJECT_ID,
-                zone=ZONE,
-                instance=INSTANCE_NAME
-            )
+            operation = compute_client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
             logger.info(f"VM start operation initiated: {operation.name}")
         else:
             logger.info(f"VM instance {INSTANCE_NAME} is already running")
@@ -143,19 +131,11 @@ async def start_runner():
     """VMを起動"""
     try:
         logger.info(f"Start endpoint called for VM: {INSTANCE_NAME}")
-        instance = compute_client.get(
-            project=PROJECT_ID,
-            zone=ZONE,
-            instance=INSTANCE_NAME
-        )
+        instance = compute_client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
 
         if instance.status != "RUNNING":
             logger.info(f"Starting VM instance: {INSTANCE_NAME}")
-            operation = compute_client.start(
-                project=PROJECT_ID,
-                zone=ZONE,
-                instance=INSTANCE_NAME
-            )
+            operation = compute_client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
             return {"status": "starting", "operation": operation.name}
 
         logger.info(f"VM instance {INSTANCE_NAME} is already running")
@@ -171,19 +151,11 @@ async def stop_runner():
     """VMを停止"""
     try:
         logger.info(f"Stop endpoint called for VM: {INSTANCE_NAME}")
-        instance = compute_client.get(
-            project=PROJECT_ID,
-            zone=ZONE,
-            instance=INSTANCE_NAME
-        )
+        instance = compute_client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
 
         if instance.status == "RUNNING":
             logger.info(f"Stopping VM instance: {INSTANCE_NAME}")
-            operation = compute_client.stop(
-                project=PROJECT_ID,
-                zone=ZONE,
-                instance=INSTANCE_NAME
-            )
+            operation = compute_client.stop(project=PROJECT_ID, zone=ZONE, instance=INSTANCE_NAME)
             return {"status": "stopping", "operation": operation.name}
 
         logger.info(f"VM instance {INSTANCE_NAME} is already stopped")
