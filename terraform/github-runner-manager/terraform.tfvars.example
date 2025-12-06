@@ -7,7 +7,7 @@ zone    = "asia-northeast1-a"
 runner_instance_name = "github-runner"  # Name of your existing VM
 
 # Runner Manager Configuration
-runner_manager_image = "nakamasato/gha-vm-self-hosted-runner:latest"
+runner_manager_image = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
 queue_name           = "runner-controller"
 
 # VM Auto-stop Configuration

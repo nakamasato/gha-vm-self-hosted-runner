@@ -55,7 +55,7 @@ runner_instance_name   = "github-runner"      # Name of your existing VM
 **Optional variables:**
 ```hcl
 region               = "asia-northeast1"      # Region for Cloud Run
-runner_manager_image = "nakamasato/gha-vm-self-hosted-runner:latest"
+runner_manager_image = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
 queue_name           = "runner-controller"
 inactive_minutes     = "15"                   # VM auto-stop timeout
 target_labels        = "self-hosted"          # Job label filtering
@@ -157,7 +157,7 @@ Use your own fork or version:
 
 ```hcl
 # In terraform.tfvars
-runner_manager_image = "your-dockerhub/your-image:v1.0.0"
+runner_manager_image = "docker.io/your-dockerhub/your-image:v1.0.0"
 ```
 
 ## Monitoring

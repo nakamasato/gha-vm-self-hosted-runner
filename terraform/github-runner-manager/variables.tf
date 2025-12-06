@@ -26,7 +26,7 @@ variable "runner_instance_name" {
 variable "runner_manager_image" {
   description = "Docker image for the runner manager"
   type        = string
-  default     = "nakamasato/gha-vm-self-hosted-runner:latest"
+  default     = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
 }
 
 variable "queue_name" {
