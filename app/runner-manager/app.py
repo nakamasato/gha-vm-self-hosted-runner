@@ -6,10 +6,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from google.api_core.exceptions import NotFound
-from google.auth.transport import requests as google_requests
 from google.cloud import compute_v1, tasks_v2
 from google.cloud.logging import Client
-from google.oauth2 import id_token
 
 # Configure logging based on environment
 # K_SERVICE is automatically set by Cloud Run
@@ -32,7 +30,6 @@ VM_INSTANCE_ZONE = os.getenv("VM_INSTANCE_ZONE")
 VM_INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
 CLOUD_TASK_LOCATION = os.getenv("CLOUD_TASK_LOCATION")
 CLOUD_TASK_QUEUE_NAME = os.getenv("CLOUD_TASK_QUEUE_NAME")
-CLOUD_TASK_SERVICE_ACCOUNT_EMAIL = os.getenv("CLOUD_TASK_SERVICE_ACCOUNT_EMAIL")
 VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "3"))
 CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
@@ -49,7 +46,6 @@ required_vars = {
     "VM_INSTANCE_NAME": VM_INSTANCE_NAME,
     "CLOUD_TASK_LOCATION": CLOUD_TASK_LOCATION,
     "CLOUD_TASK_QUEUE_NAME": CLOUD_TASK_QUEUE_NAME,
-    "CLOUD_TASK_SERVICE_ACCOUNT_EMAIL": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL,
     "CLOUD_RUN_SERVICE_URL": CLOUD_RUN_SERVICE_URL,
     "GITHUB_WEBHOOK_SECRET": GITHUB_WEBHOOK_SECRET,
 }
@@ -105,39 +101,35 @@ def verify_github_signature(payload: bytes, signature_header: str) -> bool:
     return is_valid
 
 
-def verify_google_oidc_token(authorization_header: str | None) -> dict:
-    """Verify Google OIDC token from Cloud Tasks or gcloud user.
+def verify_runner_secret(secret_header: str | None) -> bool:
+    """Verify runner control secret (uses same secret as GitHub webhook).
 
     Args:
-        authorization_header: Value from Authorization header (Bearer token)
+        secret_header: Value from X-Runner-Secret header
 
     Returns:
-        Token claims if valid
+        True if secret is valid
 
     Raises:
-        HTTPException: If token is missing or invalid
+        HTTPException: If secret is missing or invalid
     """
-    if not authorization_header:
-        logger.warning("Missing Authorization header")
-        raise HTTPException(status_code=401, detail="Missing authorization header")
+    if not secret_header:
+        logger.warning("Missing X-Runner-Secret header")
+        raise HTTPException(status_code=401, detail="Missing X-Runner-Secret header")
 
-    if not authorization_header.startswith("Bearer "):
-        logger.warning("Invalid Authorization header format")
-        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+    if not GITHUB_WEBHOOK_SECRET:
+        logger.error("GITHUB_WEBHOOK_SECRET not configured")
+        raise HTTPException(status_code=500, detail="Server configuration error")
 
-    token = authorization_header.split("Bearer ", 1)[1]
+    # Constant-time comparison to prevent timing attacks
+    is_valid = hmac.compare_digest(GITHUB_WEBHOOK_SECRET, secret_header)
 
-    try:
-        # Verify token signature and claims
-        request = google_requests.Request()
-        claims = id_token.verify_oauth2_token(token, request, audience=CLOUD_RUN_SERVICE_URL)
+    if not is_valid:
+        logger.warning("Invalid runner control secret")
+        raise HTTPException(status_code=401, detail="Invalid secret")
 
-        logger.info(f"OIDC token verified for: {claims.get('email', 'unknown')}")
-        return claims
-
-    except ValueError as e:
-        logger.warning(f"Invalid OIDC token: {e}")
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}") from e
+    logger.info("Runner control secret verified")
+    return is_valid
 
 
 def should_handle_job(workflow_job: dict) -> bool:
@@ -222,10 +214,10 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 
 
 @app.post("/runner/start")
-async def start_runner(authorization: str = Header(None)):
+async def start_runner(x_runner_secret: str = Header(None)):
     """VMを起動"""
-    # Verify Google OIDC token (from Cloud Tasks or gcloud user)
-    verify_google_oidc_token(authorization)
+    # Verify runner control secret (from Cloud Tasks or manual)
+    verify_runner_secret(x_runner_secret)
 
     try:
         logger.info(f"Start endpoint called for VM: {VM_INSTANCE_NAME}")
@@ -249,10 +241,10 @@ async def start_runner(authorization: str = Header(None)):
 
 
 @app.post("/runner/stop")
-async def stop_runner(authorization: str = Header(None)):
+async def stop_runner(x_runner_secret: str = Header(None)):
     """VMを停止"""
-    # Verify Google OIDC token (from Cloud Tasks or gcloud user)
-    verify_google_oidc_token(authorization)
+    # Verify runner control secret (from Cloud Tasks or manual)
+    verify_runner_secret(x_runner_secret)
 
     try:
         logger.info(f"Stop endpoint called for VM: {VM_INSTANCE_NAME}")
@@ -310,7 +302,7 @@ async def schedule_stop_task():
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": f"{CLOUD_RUN_SERVICE_URL}/runner/stop",
-                "oidc_token": {"service_account_email": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL},
+                "headers": {"X-Runner-Secret": GITHUB_WEBHOOK_SECRET},
             },
             "schedule_time": schedule_time,
         }

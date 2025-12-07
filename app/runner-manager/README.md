@@ -48,35 +48,37 @@ graph TB
 
 ## Security
 
-### OIDC Token Authentication
+### Shared Secret Authentication
 
-The `/runner/start` and `/runner/stop` endpoints are protected by OIDC token authentication:
+All authenticated endpoints use a shared secret for authentication:
+
+**Protected Endpoints:**
+- `/github/webhook` - GitHub webhook verification (HMAC SHA256)
+- `/runner/start` - VM start control
+- `/runner/stop` - VM stop control
 
 **How it works:**
-1. **Cloud Tasks (automatic)**: Cloud Tasks automatically includes an OIDC token signed by the service account
-2. **Manual access (gcurl)**: IAM users can call endpoints using `gcurl`, which automatically adds their identity token
+1. **GitHub Webhooks**: Uses `X-Hub-Signature-256` header with HMAC SHA256 signature
+2. **Runner Control**: Uses `X-Runner-Secret` header with the same secret value
+3. **Cloud Tasks**: Automatically includes the secret in the `X-Runner-Secret` header
 
 **Benefits:**
-- Prevents unauthorized access to VM control endpoints
-- Allows both automated (Cloud Tasks) and manual (admin) operations
-- Uses Google's built-in identity verification
+- Single secret to manage for all authentication
+- No complex IAM permissions required
+- Simple and secure
 
 **Manual Access Example:**
 ```bash
-# Install gcurl (Google Cloud curl wrapper)
-# Already available if you have gcloud SDK
+# Get the secret from Secret Manager
+SECRET=$(gcloud secrets versions access latest --secret="runner-manager-secret")
 
-# Call endpoint with automatic OIDC token
-gcurl https://your-service-url.run.app/runner/start -X POST
+# Call runner control endpoints
+curl -H "X-Runner-Secret: $SECRET" \
+  https://your-service-url.run.app/runner/start -X POST
+
+curl -H "X-Runner-Secret: $SECRET" \
+  https://your-service-url.run.app/runner/stop -X POST
 ```
-
-**Required IAM Permissions:**
-- Cloud Tasks service account: `roles/run.invoker` (automatically configured via Terraform)
-- Admin users: `roles/run.invoker` on the Cloud Run service
-
-### GitHub Webhook Verification
-
-The `/github/webhook` endpoint verifies GitHub signatures using HMAC SHA256 to prevent unauthorized webhook calls.
 
 ## Endpoints
 
@@ -186,14 +188,14 @@ sequenceDiagram
 Manually start the runner VM.
 
 **Authentication:**
-- Requires OIDC token in `Authorization: Bearer <token>` header
-- Accepts tokens from:
-  - Cloud Tasks service account (automatic)
-  - IAM users via `gcurl` (requires `roles/run.invoker` permission)
+- Requires shared secret in `X-Runner-Secret` header
+- Same secret used for GitHub webhook verification
 
-**Example with gcurl:**
+**Example:**
 ```bash
-gcurl https://your-service-url.run.app/runner/start -X POST
+SECRET=$(gcloud secrets versions access latest --secret="runner-manager-secret")
+curl -H "X-Runner-Secret: $SECRET" \
+  https://your-service-url.run.app/runner/start -X POST
 ```
 
 **Response:**
@@ -212,14 +214,14 @@ or
 Manually stop the runner VM.
 
 **Authentication:**
-- Requires OIDC token in `Authorization: Bearer <token>` header
-- Accepts tokens from:
-  - Cloud Tasks service account (automatic)
-  - IAM users via `gcurl` (requires `roles/run.invoker` permission)
+- Requires shared secret in `X-Runner-Secret` header
+- Same secret used for GitHub webhook verification
 
-**Example with gcurl:**
+**Example:**
 ```bash
-gcurl https://your-service-url.run.app/runner/stop -X POST
+SECRET=$(gcloud secrets versions access latest --secret="runner-manager-secret")
+curl -H "X-Runner-Secret: $SECRET" \
+  https://your-service-url.run.app/runner/stop -X POST
 ```
 
 **Response:**
@@ -265,9 +267,8 @@ Service information.
 | `VM_INACTIVE_MINUTES` | Minutes before auto-stop | No | `3` (default) |
 | `CLOUD_TASK_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
 | `CLOUD_TASK_QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-manager` |
-| `CLOUD_TASK_SERVICE_ACCOUNT_EMAIL` | Service account for Cloud Tasks OIDC authentication | Yes | `runner-manager@project.iam.gserviceaccount.com` |
 | `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
-| `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | Yes | `your-secret` |
+| `GITHUB_WEBHOOK_SECRET` | Shared secret for authentication (GitHub webhook and runner control) | Yes | `your-secret` |
 | `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
 
 **Label Filtering (`TARGET_LABELS`):**
@@ -304,10 +305,9 @@ Service information.
    export GCP_PROJECT_ID=your-project
    export VM_INSTANCE_ZONE=asia-northeast1-a
    export VM_INSTANCE_NAME=github-runner
-   export VM_INACTIVE_MINUTES=15
+   export VM_INACTIVE_MINUTES=3
    export CLOUD_TASK_LOCATION=asia-northeast1
    export CLOUD_TASK_QUEUE_NAME=runner-manager
-   export CLOUD_TASK_SERVICE_ACCOUNT_EMAIL=runner-manager@your-project.iam.gserviceaccount.com
    export CLOUD_RUN_SERVICE_URL=http://localhost:8080
    export GITHUB_WEBHOOK_SECRET=your-secret
    ```
@@ -349,10 +349,9 @@ docker run -p 8080:8080 \
   -e GCP_PROJECT_ID=your-project \
   -e VM_INSTANCE_ZONE=asia-northeast1-a \
   -e VM_INSTANCE_NAME=github-runner \
-  -e VM_INACTIVE_MINUTES=15 \
+  -e VM_INACTIVE_MINUTES=3 \
   -e CLOUD_TASK_LOCATION=asia-northeast1 \
   -e CLOUD_TASK_QUEUE_NAME=runner-manager \
-  -e CLOUD_TASK_SERVICE_ACCOUNT_EMAIL=runner-manager@your-project.iam.gserviceaccount.com \
   -e CLOUD_RUN_SERVICE_URL=http://localhost:8080 \
   -e GITHUB_WEBHOOK_SECRET=your-secret \
   github-runner-manager

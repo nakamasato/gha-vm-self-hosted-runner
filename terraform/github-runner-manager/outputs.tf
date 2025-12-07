@@ -18,7 +18,7 @@ output "webhook_url" {
   value       = "${google_cloud_run_v2_service.runner_manager.uri}/github/webhook"
 }
 
-output "webhook_secret_id" {
-  description = "Secret Manager secret ID for GitHub webhook secret"
-  value       = google_secret_manager_secret.webhook_secret.secret_id
+output "runner_manager_secret_id" {
+  description = "Secret Manager secret ID for runner manager authentication (GitHub webhook and runner control)"
+  value       = google_secret_manager_secret.runner_manager_secret.secret_id
 }

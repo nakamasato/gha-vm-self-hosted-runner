@@ -41,15 +41,6 @@ resource "google_cloud_tasks_queue_iam_member" "runner_manager_tasks_deleter" {
   member   = google_service_account.runner_manager.member
 }
 
-# IAM: Cloud Run Invoker (for Cloud Tasks to invoke /runner/stop)
-resource "google_cloud_run_v2_service_iam_member" "runner_manager_self_invoker" {
-  project  = var.project
-  location = local.region
-  name     = google_cloud_run_v2_service.runner_manager.name
-  role     = "roles/run.invoker"
-  member   = google_service_account.runner_manager.member
-}
-
 # Cloud Tasks Queue
 resource "google_cloud_tasks_queue" "runner_manager" {
   project  = var.project
@@ -113,11 +104,6 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name  = "CLOUD_TASK_SERVICE_ACCOUNT_EMAIL"
-        value = google_service_account.runner_manager.email
-      }
-
-      env {
         name  = "CLOUD_RUN_SERVICE_URL"
         value = "https://${local.service_name}-${data.google_project.current.number}.${local.region}.run.app"
       }
@@ -126,7 +112,7 @@ resource "google_cloud_run_v2_service" "runner_manager" {
         name = "GITHUB_WEBHOOK_SECRET"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.webhook_secret.secret_id
+            secret  = google_secret_manager_secret.runner_manager_secret.secret_id
             version = "latest"
           }
         }
@@ -161,31 +147,31 @@ resource "google_cloud_run_v2_service_iam_member" "runner_manager_invoker" {
   member   = "allUsers"
 }
 
-# Generate random webhook secret
-resource "random_string" "webhook_secret" {
+# Generate random secret for authentication
+resource "random_string" "runner_manager_secret" {
   length  = 32
   special = false
 }
 
-# Secret Manager: GitHub Webhook Secret
-resource "google_secret_manager_secret" "webhook_secret" {
+# Secret Manager: Runner Manager Secret (used for both GitHub webhook and runner control)
+resource "google_secret_manager_secret" "runner_manager_secret" {
   project   = var.project
-  secret_id = "github-webhook-secret"
+  secret_id = "runner-manager-secret"
 
   replication {
     auto {}
   }
 }
 
-resource "google_secret_manager_secret_version" "webhook_secret_version" {
-  secret      = google_secret_manager_secret.webhook_secret.id
-  secret_data = random_string.webhook_secret.result
+resource "google_secret_manager_secret_version" "runner_manager_secret_version" {
+  secret      = google_secret_manager_secret.runner_manager_secret.id
+  secret_data = random_string.runner_manager_secret.result
 }
 
-# IAM: Allow Cloud Run to access webhook secret
-resource "google_secret_manager_secret_iam_member" "runner_manager_webhook_secret" {
+# IAM: Allow Cloud Run to access runner manager secret
+resource "google_secret_manager_secret_iam_member" "runner_manager_secret_access" {
   project   = var.project
-  secret_id = google_secret_manager_secret.webhook_secret.secret_id
+  secret_id = google_secret_manager_secret.runner_manager_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.runner_manager.member
 }
