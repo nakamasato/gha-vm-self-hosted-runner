@@ -98,7 +98,6 @@ graph TB
 - GitHub organization or repository access
 - Terraform installed
 - `gcloud` CLI configured
-- Docker Hub account (for custom image builds)
 
 ### Quick Start
 
