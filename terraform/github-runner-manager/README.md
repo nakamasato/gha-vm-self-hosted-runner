@@ -45,7 +45,7 @@ The runner manager requires a GitHub App to check running workflow jobs before s
    - **Homepage URL**: Your Cloud Run URL (can be updated later)
    - **Webhook**: Uncheck "Active" (we use webhook separately)
    - **Repository permissions**:
-     - Actions: Read-only (to query workflow runs)
+     - Administration: Read-only (to check self-hosted runner status)
    - **Where can this GitHub App be installed?**: Only on this account
 3. Create the app and note down:
    - **App ID**: Found on the app settings page

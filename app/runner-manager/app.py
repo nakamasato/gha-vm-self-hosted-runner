@@ -146,11 +146,11 @@ def verify_runner_secret(secret_header: str | None) -> bool:
     return is_valid
 
 
-async def check_running_jobs() -> int:
-    """Check how many workflow runs are currently running/queued on GitHub.
+async def check_runner_busy() -> bool:
+    """Check if the self-hosted runner is currently busy.
 
     Returns:
-        Number of running/queued workflow runs
+        True if runner is busy, False if idle or not found
     """
     try:
         # Get installation access token
@@ -166,26 +166,24 @@ async def check_running_jobs() -> int:
         owner, repo_name = GITHUB_REPO.split("/")
         repo = github_client.get_repo(f"{owner}/{repo_name}")
 
-        # Get workflow runs that are queued, in_progress, or waiting
-        runs = repo.get_workflow_runs(status="queued")
-        queued_count = runs.totalCount
+        # Get all self-hosted runners
+        runners = repo.get_self_hosted_runners()
 
-        runs = repo.get_workflow_runs(status="in_progress")
-        in_progress_count = runs.totalCount
+        # Find our specific runner by name (VM_INSTANCE_NAME)
+        for runner in runners:
+            if runner.name == VM_INSTANCE_NAME:
+                is_busy = runner.busy
+                logger.info(f"Runner '{VM_INSTANCE_NAME}': status={runner.status}, busy={is_busy}")
+                return is_busy
 
-        total_running = queued_count + in_progress_count
-
-        logger.info(
-            f"GitHub workflow runs: queued={queued_count}, "
-            f"in_progress={in_progress_count}, total={total_running}"
-        )
-
-        return total_running
+        # Runner not found - safe to stop VM
+        logger.warning(f"Runner '{VM_INSTANCE_NAME}' not found in GitHub")
+        return False
 
     except Exception as e:
-        logger.error(f"Error checking GitHub workflow runs: {e}")
-        # On error, return 0 to allow VM stop (fail open)
-        return 0
+        logger.error(f"Error checking runner status: {e}")
+        # On error, assume not busy to allow VM stop (fail open)
+        return False
 
 
 def should_handle_job(workflow_job: dict) -> bool:
@@ -296,21 +294,20 @@ async def start_runner(x_runner_secret: str = Header(None)):
 
 @app.post("/runner/stop")
 async def stop_runner(x_runner_secret: str = Header(None)):
-    """VMを停止（実行中のジョブがない場合のみ）"""
+    """VMを停止（runnerがbusyでない場合のみ）"""
     # Verify runner control secret (from Cloud Tasks or manual)
     verify_runner_secret(x_runner_secret)
 
     try:
         logger.info(f"Stop endpoint called for VM: {VM_INSTANCE_NAME}")
 
-        # Check if there are any running/queued jobs
-        running_jobs = await check_running_jobs()
-        if running_jobs > 0:
-            logger.info(f"Skipping VM stop: {running_jobs} workflow runs still running/queued")
+        # Check if the runner is busy
+        is_busy = await check_runner_busy()
+        if is_busy:
+            logger.info(f"Skipping VM stop: runner '{VM_INSTANCE_NAME}' is busy")
             return {
                 "status": "skipped",
-                "reason": "jobs_running",
-                "count": running_jobs,
+                "reason": "runner_busy",
             }
 
         instance = compute_client.get(
