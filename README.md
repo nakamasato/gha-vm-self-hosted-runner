@@ -259,6 +259,38 @@ Terraform configuration for deploying the Runner Manager service on GCP.
 
 [See detailed documentation →](./terraform/github-runner-manager/README.md)
 
+## Limitations
+
+### GitHub Token Management
+
+This project currently uses a static GitHub token stored in Secret Manager, which has the following limitations:
+
+1. **Token Expiration**:
+   - **Registration tokens from GitHub UI**: Expire after **1 hour**
+   - When recreating VM instances, you need to obtain a new token from GitHub UI
+   - **Fine-Grained Personal Access Tokens (PATs)**: Expire after a maximum of 1 year
+   - **Classic PATs**: Can be set to never expire, but are less secure
+
+2. **Manual Token Rotation Required**:
+   - The token stored in Secret Manager must be manually updated before expiration
+   - No automatic token refresh mechanism is currently implemented
+   - Expired tokens will prevent new runner registrations
+
+3. **Recommended Approach**:
+   - Use **Fine-Grained PATs** with the minimum required permissions:
+     - Organization-wide runners: `Organization permissions > Self-hosted runners: Read and write`
+     - Repository-specific runners: `Repository permissions > Administration: Read and write`
+   - Set token expiration to the maximum allowed period (1 year)
+   - Implement a process to rotate tokens before expiration
+
+### Future Improvements (TODO)
+
+For a more robust solution, consider implementing:
+- **GitHub App authentication**: Provides better security and automatic token refresh
+- **Fine-Grained PAT configuration support**: Streamlined setup process for PAT-based authentication
+- **Automated token rotation**: Using Cloud Functions or Cloud Run to periodically refresh tokens
+- **Monitoring**: Alert when tokens are approaching expiration
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.

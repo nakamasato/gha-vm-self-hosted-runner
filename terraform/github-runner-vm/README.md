@@ -127,3 +127,33 @@ To minimize costs:
 - Stop the VM when not in use (no compute charges, only storage charges)
 - Use appropriate machine types based on your workload
 - Consider using sustained use discounts for long-running instances
+
+## Limitations
+
+### GitHub Token Management
+
+This module currently uses a static GitHub token stored in Secret Manager, which has the following limitations:
+
+1. **Token Expiration**:
+   - **Registration tokens**: Expire after 1 hour (not recommended for persistent runners)
+   - **Fine-Grained Personal Access Tokens (PATs)**: Expire after a maximum of 1 year
+   - **Classic PATs**: Can be set to never expire, but are less secure
+
+2. **Manual Token Rotation Required**:
+   - The token stored in Secret Manager must be manually updated before expiration
+   - No automatic token refresh mechanism is currently implemented
+   - Expired tokens will prevent new runner registrations (existing runners may continue to work)
+
+3. **Recommended Approach**:
+   - Use **Fine-Grained PATs** with the minimum required permissions:
+     - Organization-wide runners: `Organization permissions > Self-hosted runners: Read and write`
+     - Repository-specific runners: `Repository permissions > Administration: Read and write`
+   - Set token expiration to the maximum allowed period (1 year)
+   - Implement a process to rotate tokens before expiration
+
+### Future Improvements
+
+For a more robust solution, consider implementing:
+- **GitHub App authentication**: Provides better security and automatic token refresh
+- **Automated token rotation**: Using Cloud Functions or Cloud Run to periodically refresh tokens
+- **Monitoring**: Alert when tokens are approaching expiration

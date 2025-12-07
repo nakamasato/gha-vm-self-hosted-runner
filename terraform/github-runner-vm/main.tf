@@ -17,12 +17,45 @@ GITHUB_URL="${local.github_url}"
 
 echo "Configuring GitHub Actions runner for: $GITHUB_URL"
 
+# Install common tools (similar to ubuntu-latest) - only on first boot
+if [ ! -f /var/lib/cloud/instance/runner-tools-installed ]; then
+  echo "Installing common development tools..."
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    git \
+    curl \
+    wget \
+    unzip \
+    jq \
+    build-essential \
+    python3 \
+    python3-pip \
+    python3-venv \
+    docker.io \
+    docker-compose
+
+  # Clean up apt cache to reduce disk usage
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+  # Start docker service
+  systemctl enable docker
+  systemctl start docker
+
+  # Mark as installed
+  mkdir -p /var/lib/cloud/instance
+  touch /var/lib/cloud/instance/runner-tools-installed
+  echo "Tools installation completed"
+fi
+
 # Install GitHub Actions runner if not already installed
 if [ ! -d "/home/runner/actions-runner" ]; then
   # Create runner user if doesn't exist
   if ! id -u runner > /dev/null 2>&1; then
     useradd -m -s /bin/bash runner
   fi
+
+  # Add runner user to docker group
+  usermod -aG docker runner
 
   # Download and install runner
   cd /home/runner
