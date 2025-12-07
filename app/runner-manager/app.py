@@ -223,7 +223,7 @@ async def schedule_stop_task():
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": f"{CLOUD_RUN_SERVICE_URL}/runner/stop",
                 "oidc_token": {
-                    "service_account_email": f"runner-controller@{GCP_PROJECT_ID}.iam.gserviceaccount.com"
+                    "service_account_email": f"runner-manager@{GCP_PROJECT_ID}.iam.gserviceaccount.com"
                 },
             },
             "schedule_time": schedule_time,
