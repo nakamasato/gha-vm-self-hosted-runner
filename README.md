@@ -261,6 +261,12 @@ Terraform configuration for deploying the Runner Manager service on GCP.
 
 ## Limitations
 
+### Runner Scope
+
+**Repository-level runners only**: The runner manager is designed for **repository-level self-hosted runners**. It checks the busy status of a specific runner registered to a repository using the GitHub API.
+
+For **organization-level self-hosted runners**, the current implementation may not return accurate runner status, as organization runners can be assigned to jobs from different repositories within the organization. If you need to manage organization-level runners, you may need to modify the implementation to check organization runners instead of repository runners.
+
 ### GitHub Token Management
 
 This project currently uses a static GitHub token stored in Secret Manager, which has the following limitations:

@@ -56,6 +56,11 @@ The runner manager requires a GitHub App to check running workflow jobs before s
    - Select repositories (or all repositories)
    - Note down the **Installation ID** from the URL: `https://github.com/settings/installations/{installation_id}`
 
+**Important Notes:**
+
+- **Repository-level runners only**: This runner manager is designed for **repository-level self-hosted runners**. It checks the busy status of a specific runner registered to a repository. For **organization-level self-hosted runners**, the GitHub API may not return accurate runner status, as the runner could be assigned to jobs from different repositories within the organization.
+- If you need to manage organization-level runners, you may need to modify the implementation to check organization runners instead of repository runners.
+
 **Prepare credentials:**
 
 ```bash
