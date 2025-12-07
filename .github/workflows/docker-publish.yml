@@ -84,6 +84,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          repository: ${{ steps.repo.outputs.image }}
+          repository: ${{ github.repository }}
           readme-filepath: ./app/runner-manager/README.md
-          short-description: "${{ steps.repo.outputs.is_prod == 'true' && 'GitHub Actions self-hosted runner manager for GCP' || '[DEV] GitHub Actions self-hosted runner manager for GCP' }}"
+          short-description: "${{ steps.repo.outputs.is_prod == 'true' && 'GitHub Actions GCP VM-based self-hosted runner manager' || '[DEV] GitHub Actions GCP VM-based self-hosted runner manager' }}"
