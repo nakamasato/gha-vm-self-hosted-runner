@@ -9,19 +9,6 @@ variable "region" {
   default     = "asia-northeast1"
 }
 
-variable "zone" {
-  description = "GCP zone where the runner VM is located"
-  type        = string
-  default     = "asia-northeast1-a"
-}
-
-# Existing Runner VM Configuration
-variable "runner_instance_name" {
-  description = "Name of the existing GitHub runner VM instance"
-  type        = string
-  default     = "github-runner"
-}
-
 # Runner Manager Configuration
 variable "runner_manager_image" {
   description = "Docker image for the runner manager"
@@ -41,12 +28,6 @@ variable "inactive_minutes" {
   default     = "15"
 }
 
-variable "target_labels" {
-  description = "Comma-separated list of labels to target (e.g., 'self-hosted,linux')"
-  type        = string
-  default     = "self-hosted"
-}
-
 variable "deletion_protection" {
   description = "Enable deletion protection for Cloud Run service"
   type        = bool
@@ -55,16 +36,13 @@ variable "deletion_protection" {
 
 # GitHub App Configuration
 variable "github_app_id" {
-  description = "GitHub App ID for querying workflow runs"
+  description = "GitHub App ID for authentication"
   type        = string
 }
 
-variable "github_app_installation_id" {
-  description = "GitHub App Installation ID"
+# Runner Configuration
+variable "runner_config" {
+  description = "JSON array of runner configurations. Each entry contains: repo, labels, vm_instance_name, vm_instance_zone, github_installation_id"
   type        = string
-}
-
-variable "github_repo" {
-  description = "GitHub repository to monitor (format: owner/repo)"
-  type        = string
+  # Example: '[{"repo": "owner/repo1", "labels": ["self-hosted"], "vm_instance_name": "github-runner-1", "vm_instance_zone": "asia-northeast1-a", "github_installation_id": "12345678"}]'
 }

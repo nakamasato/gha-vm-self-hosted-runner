@@ -79,16 +79,6 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name  = "VM_INSTANCE_ZONE"
-        value = var.zone
-      }
-
-      env {
-        name  = "VM_INSTANCE_NAME"
-        value = var.runner_instance_name
-      }
-
-      env {
         name  = "VM_INACTIVE_MINUTES"
         value = var.inactive_minutes
       }
@@ -134,18 +124,8 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name  = "GITHUB_INSTALLATION_ID"
-        value = var.github_app_installation_id
-      }
-
-      env {
-        name  = "GITHUB_REPO"
-        value = var.github_repo
-      }
-
-      env {
-        name  = "TARGET_LABELS"
-        value = var.target_labels
+        name  = "RUNNER_CONFIG"
+        value = var.runner_config
       }
 
       resources {
