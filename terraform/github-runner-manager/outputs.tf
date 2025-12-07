@@ -10,7 +10,7 @@ output "runner_manager_service_account" {
 
 output "cloud_tasks_queue_name" {
   description = "Name of the Cloud Tasks queue"
-  value       = google_cloud_tasks_queue.runner_controller.name
+  value       = google_cloud_tasks_queue.runner_manager.name
 }
 
 output "webhook_url" {

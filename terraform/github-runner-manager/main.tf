@@ -23,22 +23,26 @@ resource "google_project_iam_member" "runner_manager_compute" {
   member  = google_service_account.runner_manager.member
 }
 
-# IAM: Cloud Tasks Enqueuer (for tasks.create)
-resource "google_project_iam_member" "runner_manager_tasks_enqueuer" {
-  project = var.project
-  role    = "roles/cloudtasks.enqueuer"
-  member  = google_service_account.runner_manager.member
+# IAM: Cloud Tasks Enqueuer (for tasks.create on specific queue)
+resource "google_cloud_tasks_queue_iam_member" "runner_manager_tasks_enqueuer" {
+  project  = google_cloud_tasks_queue.runner_manager.project
+  location = google_cloud_tasks_queue.runner_manager.location
+  name     = google_cloud_tasks_queue.runner_manager.name
+  role     = "roles/cloudtasks.enqueuer"
+  member   = google_service_account.runner_manager.member
 }
 
-# IAM: Cloud Tasks Task Deleter (for tasks.delete)
-resource "google_project_iam_member" "runner_manager_tasks_deleter" {
-  project = var.project
-  role    = "roles/cloudtasks.taskDeleter"
-  member  = google_service_account.runner_manager.member
+# IAM: Cloud Tasks Task Deleter (for tasks.delete on specific queue)
+resource "google_cloud_tasks_queue_iam_member" "runner_manager_tasks_deleter" {
+  project  = google_cloud_tasks_queue.runner_manager.project
+  location = google_cloud_tasks_queue.runner_manager.location
+  name     = google_cloud_tasks_queue.runner_manager.name
+  role     = "roles/cloudtasks.taskDeleter"
+  member   = google_service_account.runner_manager.member
 }
 
 # Cloud Tasks Queue
-resource "google_cloud_tasks_queue" "runner_controller" {
+resource "google_cloud_tasks_queue" "runner_manager" {
   project  = var.project
   name     = var.queue_name
   location = local.region
