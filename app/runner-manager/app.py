@@ -9,13 +9,14 @@ from google.cloud import compute_v1, tasks_v2
 from google.cloud.logging import Client
 
 # Configure logging based on environment
-IS_PRODUCTION = os.getenv("ENV", "dev") in ["prod", "production"]
-if IS_PRODUCTION:
-    # Production: Use Cloud Logging
+# K_SERVICE is automatically set by Cloud Run
+IS_CLOUD_RUN = os.getenv("K_SERVICE") is not None
+if IS_CLOUD_RUN:
+    # Cloud Run: Use Cloud Logging
     client = Client()
     client.setup_logging()
 else:
-    # Development: Use local logging
+    # Local development: Use local logging
     logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
