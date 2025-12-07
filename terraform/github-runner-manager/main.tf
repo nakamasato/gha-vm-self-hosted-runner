@@ -63,6 +63,11 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       image = var.runner_manager_image
 
       env {
+        name  = "ENV"
+        value = "production"
+      }
+
+      env {
         name  = "GCP_PROJECT_ID"
         value = var.project
       }

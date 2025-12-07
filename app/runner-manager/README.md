@@ -175,6 +175,7 @@ Service information.
 
 | Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
+| `ENV` | Environment (dev/production) | No | `dev` (default), `production` |
 | `GCP_PROJECT_ID` | GCP project ID | Yes | `my-project` |
 | `VM_INSTANCE_ZONE` | VM instance zone | Yes | `asia-northeast1-a` |
 | `VM_INSTANCE_NAME` | VM instance name | Yes | `github-runner` |
@@ -191,6 +192,11 @@ Service information.
 2. VM is only started if **ALL** target labels are present in the job labels
 3. Default: `self-hosted` (manages any self-hosted runner job)
 4. Example workflow: `runs-on: [self-hosted, linux, gpu]` matches `TARGET_LABELS=self-hosted,linux,gpu`
+
+**Logging Configuration (`ENV`):**
+- `dev` (default): Uses local logging with `logging.basicConfig`
+- `production` or `prod`: Uses Cloud Logging (logs appear in GCP Cloud Logging console)
+- Cloud Run deployment automatically sets `ENV=production`
 
 ## Development
 

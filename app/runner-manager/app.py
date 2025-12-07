@@ -6,9 +6,18 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from google.cloud import compute_v1, tasks_v2
+from google.cloud.logging import Client
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging based on environment
+IS_PRODUCTION = os.getenv("ENV", "dev") in ["prod", "production"]
+if IS_PRODUCTION:
+    # Production: Use Cloud Logging
+    client = Client()
+    client.setup_logging()
+else:
+    # Development: Use local logging
+    logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
