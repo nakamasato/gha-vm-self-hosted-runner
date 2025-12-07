@@ -19,6 +19,7 @@ VM_INSTANCE_ZONE = os.getenv("VM_INSTANCE_ZONE")
 VM_INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
 CLOUD_TASK_LOCATION = os.getenv("CLOUD_TASK_LOCATION")
 CLOUD_TASK_QUEUE_NAME = os.getenv("CLOUD_TASK_QUEUE_NAME")
+CLOUD_TASK_SERVICE_ACCOUNT_EMAIL = os.getenv("CLOUD_TASK_SERVICE_ACCOUNT_EMAIL")
 VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "15"))
 CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
@@ -35,6 +36,7 @@ required_vars = {
     "VM_INSTANCE_NAME": VM_INSTANCE_NAME,
     "CLOUD_TASK_LOCATION": CLOUD_TASK_LOCATION,
     "CLOUD_TASK_QUEUE_NAME": CLOUD_TASK_QUEUE_NAME,
+    "CLOUD_TASK_SERVICE_ACCOUNT_EMAIL": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL,
     "CLOUD_RUN_SERVICE_URL": CLOUD_RUN_SERVICE_URL,
     "GITHUB_WEBHOOK_SECRET": GITHUB_WEBHOOK_SECRET,
 }
@@ -222,9 +224,7 @@ async def schedule_stop_task():
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": f"{CLOUD_RUN_SERVICE_URL}/runner/stop",
-                "oidc_token": {
-                    "service_account_email": f"runner-manager@{GCP_PROJECT_ID}.iam.gserviceaccount.com"
-                },
+                "oidc_token": {"service_account_email": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL},
             },
             "schedule_time": schedule_time,
         }

@@ -181,6 +181,7 @@ Service information.
 | `VM_INACTIVE_MINUTES` | Minutes before auto-stop | No | `15` (default) |
 | `CLOUD_TASK_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
 | `CLOUD_TASK_QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-manager` |
+| `CLOUD_TASK_SERVICE_ACCOUNT_EMAIL` | Service account for Cloud Tasks | Yes | `runner-manager@project.iam.gserviceaccount.com` |
 | `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | Yes | `your-secret` |
 | `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
@@ -216,6 +217,7 @@ Service information.
    export VM_INACTIVE_MINUTES=15
    export CLOUD_TASK_LOCATION=asia-northeast1
    export CLOUD_TASK_QUEUE_NAME=runner-manager
+   export CLOUD_TASK_SERVICE_ACCOUNT_EMAIL=runner-manager@your-project.iam.gserviceaccount.com
    export CLOUD_RUN_SERVICE_URL=http://localhost:8080
    export GITHUB_WEBHOOK_SECRET=your-secret
    ```
@@ -260,6 +262,7 @@ docker run -p 8080:8080 \
   -e VM_INACTIVE_MINUTES=15 \
   -e CLOUD_TASK_LOCATION=asia-northeast1 \
   -e CLOUD_TASK_QUEUE_NAME=runner-manager \
+  -e CLOUD_TASK_SERVICE_ACCOUNT_EMAIL=runner-manager@your-project.iam.gserviceaccount.com \
   -e CLOUD_RUN_SERVICE_URL=http://localhost:8080 \
   -e GITHUB_WEBHOOK_SECRET=your-secret \
   github-runner-manager

@@ -93,6 +93,11 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
+        name  = "CLOUD_TASK_SERVICE_ACCOUNT_EMAIL"
+        value = google_service_account.runner_manager.email
+      }
+
+      env {
         name  = "CLOUD_RUN_SERVICE_URL"
         value = "https://${local.service_name}-${data.google_project.current.number}.${local.region}.run.app"
       }
