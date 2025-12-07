@@ -46,6 +46,103 @@ graph TB
     style CT fill:#fbbc04,stroke:#333,stroke-width:2px
 ```
 
+### Multi-Repository Support
+
+The Runner Manager supports multiple repositories with separate VMs from a single Cloud Run service. Each webhook event is matched against the `RUNNER_CONFIG` to determine which VM to manage.
+
+**Configuration-Based Routing:**
+
+```mermaid
+flowchart TD
+    subgraph "GitHub Repositories"
+        R1[owner/repo-a<br/>labels: self-hosted]
+        R2[owner/repo-b<br/>labels: self-hosted, gpu]
+        R3[owner/repo-c<br/>labels: self-hosted]
+    end
+
+    subgraph "Runner Manager (Cloud Run)"
+        WH[Webhook Endpoint<br/>/github/webhook]
+
+        subgraph "RUNNER_CONFIG Matching"
+            M1{Match repo?}
+            M2{Match labels?}
+        end
+    end
+
+    subgraph "Compute Engine VMs"
+        VM1[github-runner-a<br/>asia-northeast1-a]
+        VM2[github-runner-b<br/>us-central1-a]
+        VM3[github-runner-c<br/>europe-west1-a]
+    end
+
+    R1 -->|workflow_job event| WH
+    R2 -->|workflow_job event| WH
+    R3 -->|workflow_job event| WH
+
+    WH --> M1
+    M1 -->|repo: owner/repo-a<br/>labels: [self-hosted]| M2
+    M2 -->|All labels match| VM1
+
+    WH --> M1
+    M1 -->|repo: owner/repo-b<br/>labels: [self-hosted, gpu]| M2
+    M2 -->|All labels match| VM2
+
+    WH --> M1
+    M1 -->|repo: owner/repo-c<br/>labels: [self-hosted]| M2
+    M2 -->|All labels match| VM3
+
+    M1 -->|No match| SKIP[Skip: return ok]
+    M2 -->|Labels mismatch| SKIP
+
+    style WH fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
+    style VM1 fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
+    style VM2 fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
+    style VM3 fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
+    style M1 fill:#fbbc04,stroke:#333,stroke-width:2px
+    style M2 fill:#fbbc04,stroke:#333,stroke-width:2px
+    style SKIP fill:#ea4335,stroke:#333,stroke-width:2px,color:#fff
+```
+
+**Matching Logic:**
+
+1. **Repository Match**: First checks if `repository.full_name` from the webhook matches any `repo` in `RUNNER_CONFIG`
+2. **Label Match**: Then verifies that **ALL** configured `labels` are present in the job's labels
+3. **VM Selection**: If both match, the corresponding `vm_instance_name` and `vm_instance_zone` are used
+4. **Skip**: If no match is found, the event is ignored (returns `200 OK`)
+
+**Example Configuration:**
+
+```json
+[
+  {
+    "repo": "owner/repo-a",
+    "labels": ["self-hosted"],
+    "vm_instance_name": "github-runner-a",
+    "vm_instance_zone": "asia-northeast1-a"
+  },
+  {
+    "repo": "owner/repo-b",
+    "labels": ["self-hosted", "gpu"],
+    "vm_instance_name": "github-runner-b",
+    "vm_instance_zone": "us-central1-a"
+  },
+  {
+    "repo": "owner/repo-c",
+    "labels": ["self-hosted"],
+    "vm_instance_name": "github-runner-c",
+    "vm_instance_zone": "europe-west1-a"
+  }
+]
+```
+
+**Benefits:**
+
+- Single Cloud Run service manages multiple repositories
+- Independent VMs per repository for isolation
+- VMs can be in different zones/regions
+- Flexible label-based routing
+- Cost-effective (only one webhook endpoint, shared infrastructure)
+
 ## Security
 
 ### Shared Secret Authentication
@@ -251,9 +348,21 @@ Service information.
 ```json
 {
   "service": "GitHub Runner Manager",
-  "instance": "vm-name",
-  "zone": "asia-northeast1-a",
-  "inactive_minutes": 15
+  "inactive_minutes": 3,
+  "runner_configs": [
+    {
+      "repo": "owner/repo-a",
+      "labels": ["self-hosted"],
+      "vm_instance_name": "github-runner-a",
+      "vm_instance_zone": "asia-northeast1-a"
+    },
+    {
+      "repo": "owner/repo-b",
+      "labels": ["self-hosted", "gpu"],
+      "vm_instance_name": "github-runner-b",
+      "vm_instance_zone": "us-central1-a"
+    }
+  ]
 }
 ```
 
@@ -262,20 +371,42 @@ Service information.
 | Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
 | `GCP_PROJECT_ID` | GCP project ID | Yes | `my-project` |
-| `VM_INSTANCE_ZONE` | VM instance zone | Yes | `asia-northeast1-a` |
-| `VM_INSTANCE_NAME` | VM instance name | Yes | `github-runner` |
-| `VM_INACTIVE_MINUTES` | Minutes before auto-stop | No | `3` (default) |
 | `CLOUD_TASK_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
 | `CLOUD_TASK_QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-manager` |
 | `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
 | `RUNNER_MANAGER_SECRET` | Shared secret for authentication (GitHub webhook and runner control) | Yes | `your-secret` |
-| `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
+| `VM_INACTIVE_MINUTES` | Minutes before auto-stop after job completion | No | `3` (default) |
+| `GITHUB_APP_ID` | GitHub App ID for authentication | Yes | `123456` |
+| `GITHUB_APP_PRIVATE_KEY` | GitHub App private key (PEM format) | Yes | `<PEM-formatted-private-key>` |
+| `GITHUB_APP_INSTALLATION_ID` | GitHub App Installation ID (same for all repositories) | Yes | `12345678` |
+| `RUNNER_CONFIG` | JSON array of runner configurations (see below) | Yes | `[{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "runner-1", "vm_instance_zone": "asia-northeast1-a"}]` |
 
-**Label Filtering (`TARGET_LABELS`):**
-1. The service checks the `labels` field in the `workflow_job` webhook payload
-2. VM is only started if **ALL** target labels are present in the job labels
-3. Default: `self-hosted` (manages any self-hosted runner job)
-4. Example workflow: `runs-on: [self-hosted, linux, gpu]` matches `TARGET_LABELS=self-hosted,linux,gpu`
+**Runner Configuration (`RUNNER_CONFIG`):**
+
+`RUNNER_CONFIG` is a JSON array where each entry defines a repository-VM mapping:
+
+```json
+[
+  {
+    "repo": "owner/repo-name",
+    "labels": ["self-hosted", "optional-label"],
+    "vm_instance_name": "github-runner-1",
+    "vm_instance_zone": "asia-northeast1-a"
+  }
+]
+```
+
+**Fields:**
+- `repo` (string, required): Repository full name (format: `owner/repo`)
+- `labels` (array, required): Runner labels that must ALL be present in the job
+- `vm_instance_name` (string, required): GCE VM instance name
+- `vm_instance_zone` (string, required): GCE VM instance zone
+
+**Matching Behavior:**
+1. The service checks the `repository.full_name` and `labels` from the `workflow_job` webhook
+2. VM is only managed if the repository matches AND all configured labels are present in the job
+3. Multiple repositories can share the same VM by using identical `vm_instance_name` and `vm_instance_zone`
+4. Example workflow: `runs-on: [self-hosted, linux, gpu]` matches `"labels": ["self-hosted", "linux"]` (subset match)
 
 **Logging Configuration:**
 - The service automatically detects if it's running on Cloud Run by checking the `K_SERVICE` environment variable
@@ -303,13 +434,15 @@ Service information.
 
    # Or export variables directly:
    export GCP_PROJECT_ID=your-project
-   export VM_INSTANCE_ZONE=asia-northeast1-a
-   export VM_INSTANCE_NAME=github-runner
-   export VM_INACTIVE_MINUTES=3
    export CLOUD_TASK_LOCATION=asia-northeast1
    export CLOUD_TASK_QUEUE_NAME=runner-manager
    export CLOUD_RUN_SERVICE_URL=http://localhost:8080
    export RUNNER_MANAGER_SECRET=your-secret
+   export VM_INACTIVE_MINUTES=3
+   export GITHUB_APP_ID=123456
+   export GITHUB_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)"
+   export GITHUB_APP_INSTALLATION_ID=12345678
+   export RUNNER_CONFIG='[{"repo":"owner/repo","labels":["self-hosted"],"vm_instance_name":"github-runner","vm_instance_zone":"asia-northeast1-a"}]'
    ```
 
 2. Run locally:
@@ -347,13 +480,15 @@ docker build -t github-runner-manager .
 ```bash
 docker run -p 8080:8080 \
   -e GCP_PROJECT_ID=your-project \
-  -e VM_INSTANCE_ZONE=asia-northeast1-a \
-  -e VM_INSTANCE_NAME=github-runner \
-  -e VM_INACTIVE_MINUTES=3 \
   -e CLOUD_TASK_LOCATION=asia-northeast1 \
   -e CLOUD_TASK_QUEUE_NAME=runner-manager \
   -e CLOUD_RUN_SERVICE_URL=http://localhost:8080 \
   -e RUNNER_MANAGER_SECRET=your-secret \
+  -e VM_INACTIVE_MINUTES=3 \
+  -e GITHUB_APP_ID=123456 \
+  -e GITHUB_APP_PRIVATE_KEY="$(cat path/to/private-key.pem)" \
+  -e GITHUB_APP_INSTALLATION_ID=12345678 \
+  -e RUNNER_CONFIG='[{"repo":"owner/repo","labels":["self-hosted"],"vm_instance_name":"github-runner","vm_instance_zone":"asia-northeast1-a"}]' \
   github-runner-manager
 ```
 

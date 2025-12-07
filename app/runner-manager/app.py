@@ -249,10 +249,10 @@ async def start_runner_if_needed(vm_config: dict):
 
 @app.post("/github/webhook")
 async def github_webhook(request: Request, x_hub_signature_256: str = Header(None)):
-    """GitHub Webhookを受信"""
+    """Receive GitHub webhook events."""
     body = await request.body()
 
-    # Webhook検証
+    # Verify webhook signature
     if not verify_github_signature(body, x_hub_signature_256):
         raise HTTPException(status_code=401, detail="Invalid signature")
 
@@ -281,7 +281,7 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 
     # Handle matching jobs
     if action == "queued":
-        # VM起動（必要なら）
+        # Start VM if needed
         await start_runner_if_needed(vm_config)
 
     elif action == "completed":
@@ -293,7 +293,7 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 
 @app.post("/runner/start")
 async def start_runner(request: Request, x_runner_secret: str = Header(None)):
-    """VMを起動"""
+    """Start the runner VM."""
     # Verify runner control secret (from Cloud Tasks or manual)
     verify_runner_secret(x_runner_secret)
 
@@ -330,7 +330,7 @@ async def start_runner(request: Request, x_runner_secret: str = Header(None)):
 
 @app.post("/runner/stop")
 async def stop_runner(request: Request, x_runner_secret: str = Header(None)):
-    """VMを停止（runnerがbusyでない場合のみ）"""
+    """Stop the runner VM (only if the runner is not busy)."""
     # Verify runner control secret (from Cloud Tasks or manual)
     verify_runner_secret(x_runner_secret)
 
@@ -395,7 +395,7 @@ async def stop_runner(request: Request, x_runner_secret: str = Header(None)):
 
 
 async def schedule_stop_task(vm_config: dict, delay_minutes: int | None = None):
-    """Job完了後の指定時間後にstopを実行するCloud Taskを作成
+    """Schedule a Cloud Task to stop the VM after a specified delay.
 
     Args:
         vm_config: VM configuration dict containing vm_instance_name and vm_instance_zone
@@ -408,7 +408,7 @@ async def schedule_stop_task(vm_config: dict, delay_minutes: int | None = None):
         # Use provided delay or default to VM_INACTIVE_MINUTES
         delay = delay_minutes if delay_minutes is not None else VM_INACTIVE_MINUTES
 
-        # タスク作成の準備（タイムスタンプでユニークなIDを生成）
+        # Prepare task creation (generate unique ID with timestamp)
         parent = tasks_client.queue_path(GCP_PROJECT_ID, CLOUD_TASK_LOCATION, CLOUD_TASK_QUEUE_NAME)
         timestamp = int(datetime.now(timezone.utc).timestamp())
         task_name = f"{parent}/tasks/stop-{vm_instance_name}-{timestamp}"
