@@ -124,8 +124,8 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name  = "GITHUB_INSTALLATION_ID"
-        value = var.github_installation_id
+        name  = "GITHUB_APP_INSTALLATION_ID"
+        value = var.github_app_installation_id
       }
 
       env {

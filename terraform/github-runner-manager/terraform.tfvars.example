@@ -13,8 +13,8 @@ inactive_minutes = "15"
 deletion_protection = true  # Set to false to allow terraform destroy without extra steps
 
 # GitHub App Configuration
-github_app_id          = "123456"   # Your GitHub App ID
-github_installation_id = "12345678" # Installation ID (same for all repos)
+github_app_id              = "123456"   # Your GitHub App ID
+github_app_installation_id = "12345678" # Installation ID (same for all repos)
 
 # Runner Configuration (JSON array)
 # Each entry maps a repository + labels to a specific VM instance

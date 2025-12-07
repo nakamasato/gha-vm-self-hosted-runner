@@ -40,7 +40,7 @@ variable "github_app_id" {
   type        = string
 }
 
-variable "github_installation_id" {
+variable "github_app_installation_id" {
   description = "GitHub App Installation ID (same for all repositories)"
   type        = string
 }

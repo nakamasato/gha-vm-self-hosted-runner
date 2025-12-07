@@ -36,7 +36,7 @@ RUNNER_MANAGER_SECRET = os.getenv("RUNNER_MANAGER_SECRET")
 # GitHub App configuration (for checking running jobs)
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID")
 GITHUB_APP_PRIVATE_KEY = os.getenv("GITHUB_APP_PRIVATE_KEY")
-GITHUB_INSTALLATION_ID = os.getenv("GITHUB_INSTALLATION_ID")
+GITHUB_APP_INSTALLATION_ID = os.getenv("GITHUB_APP_INSTALLATION_ID")
 
 # Runner configuration (JSON array)
 # Format: [{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "...", "vm_instance_zone": "..."}]
@@ -55,7 +55,7 @@ required_vars = {
     "RUNNER_MANAGER_SECRET": RUNNER_MANAGER_SECRET,
     "GITHUB_APP_ID": GITHUB_APP_ID,
     "GITHUB_APP_PRIVATE_KEY": GITHUB_APP_PRIVATE_KEY,
-    "GITHUB_INSTALLATION_ID": GITHUB_INSTALLATION_ID,
+    "GITHUB_APP_INSTALLATION_ID": GITHUB_APP_INSTALLATION_ID,
     "RUNNER_CONFIG": RUNNER_CONFIG_STR,
 }
 
@@ -189,7 +189,7 @@ async def check_runner_busy(vm_config: dict) -> bool:
         repo_full_name = vm_config.get("repo")
 
         # Get installation access token
-        access_token = github_integration.get_access_token(int(GITHUB_INSTALLATION_ID)).token
+        access_token = github_integration.get_access_token(int(GITHUB_APP_INSTALLATION_ID)).token
 
         # Create GitHub client with installation token
         from github import Github
