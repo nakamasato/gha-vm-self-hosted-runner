@@ -19,7 +19,7 @@ By combining GCP VM instances with Cloud Run and Cloud Tasks, this solution prov
 - Automatic shutdown after configurable inactivity period (default: 3 minutes)
 - Persistent runner configuration across VM restarts
 
-### When to Use This vs. Actions Runner Controller
+### When to Use GHA VM Self-Hosted Runner vs. Actions Runner Controller
 
 For **large-scale deployments** with high workflow concurrency and dynamic scaling needs, consider using [Actions Runner Controller](https://docs.github.com/en/actions/concepts/runners/actions-runner-controller) (ARC) on Kubernetes. ARC excels at managing fleets of runners with auto-scaling capabilities.
 
@@ -101,123 +101,121 @@ graph TB
 
 ### Quick Start
 
-1. **Create GitHub Runner Token and store in Secret Manager**:
+#### 1. Obtain GitHub Runner Registration Token
+
+1. Go to your GitHub repository: **Settings > Actions > Runners > New self-hosted runner**
+2. Copy the registration token from the configuration command (the token after `--token`)
+3. Store it in Secret Manager:
    ```bash
-   # Generate token from GitHub UI (Settings > Actions > Runners > New runner)
-   echo -n "YOUR_RUNNER_TOKEN" | gcloud secrets create github-runner-token \
+   echo -n "YOUR_REGISTRATION_TOKEN" | gcloud secrets create github-runner-token \
      --project=YOUR_PROJECT_ID \
      --data-file=-
    ```
 
-2. **Deploy Runner VM**:
-   ```bash
-   cd terraform/github-runner-vm
-   terraform init
-   terraform apply
-   ```
-
-3. **Deploy Runner Manager**:
-   ```bash
-   cd terraform/github-runner-manager
-   terraform init
-   terraform apply
-   ```
-
-4. **Configure GitHub Webhook**:
-   - Go to your GitHub organization/repository Settings > Webhooks
-   - Add webhook with Cloud Run URL: `https://your-service-url.run.app/github/webhook`
-   - Select event: `Workflow jobs`
-   - Configure secret (get from Secret Manager: `gcloud secrets versions access latest --secret=runner-manager-secret`)
-
-## CI/CD
-
-### GitHub Actions Workflows
-
-The project includes automated CI/CD pipelines:
-
-#### Docker Build and Push
-- **Workflow**: `.github/workflows/docker-publish.yml`
-- **Triggers**:
-  - Push to `main` branch
-  - New version tags (`v*`)
-  - Pull requests (build only, no push)
-  - Manual workflow dispatch
-- **Features**:
-  - Multi-platform builds (amd64, arm64)
-  - Automatic tagging strategy (latest, semver, sha)
-  - Docker Hub description sync
-  - GitHub Actions cache for faster builds
-
-**Required Secrets**:
-- `DOCKER_HUB_USERNAME`: Docker Hub username
-- `DOCKER_HUB_TOKEN`: Docker Hub access token
-
-#### Linting
-- **Workflow**: `.github/workflows/lint.yml`
-- **Triggers**: Push and pull requests affecting app code
-- **Tools**: Ruff (Python linter and formatter)
-
-### Setting Up Secrets
-
-1. Create a Docker Hub access token:
-   - Go to [Docker Hub Account Settings](https://hub.docker.com/settings/security)
-   - Click "New Access Token"
-   - Name it (e.g., "github-actions") and copy the token
-
-2. Add secrets to your GitHub repository:
-   - Go to repository Settings > Secrets and variables > Actions
-   - Add `DOCKER_HUB_USERNAME` with your Docker Hub username
-   - Add `DOCKER_HUB_TOKEN` with the access token
-
-### Using the Docker Image
-
-Pull the pre-built image from Docker Hub:
-
-**For production:**
-```bash
-docker pull nakamasato/gha-vm-self-hosted-runner:latest
-```
-
-**For development/testing:**
-```bash
-docker pull nakamasato/gha-vm-self-hosted-runner-dev:latest
-```
-
-**Available tags:**
-
-*PROD (`nakamasato/gha-vm-self-hosted-runner`):*
-- `latest`: Latest release version
-- `v1.0.0`, `v1.0`, `v1`: Semantic version tags (from git tags)
-
-*DEV (`nakamasato/gha-vm-self-hosted-runner-dev`):*
-- `latest`: Latest build from main branch
-- `main`: Main branch builds
-- `main-<sha>`: Commit-specific builds
-- `pr-<number>`: Pull request builds
-
-## Development
-
-### Pre-commit Hooks
-
-This project uses pre-commit hooks to ensure code quality:
+#### 2. Deploy Runner VM
 
 ```bash
-# Install pre-commit
-pip install pre-commit
-
-# Install the git hooks
-pre-commit install
-
-# Run manually on all files
-pre-commit run --all-files
+cd terraform/github-runner-vm
+cp terraform.tfvars.example terraform.tfvars
 ```
 
-The pre-commit configuration includes:
-- **Ruff**: Python linter with auto-fix
-- **Ruff Format**: Python code formatter
-- **Standard hooks**: Trailing whitespace, end-of-file-fixer, YAML checks, etc.
+Edit `terraform.tfvars`:
+```hcl
+project       = "your-gcp-project-id"
+instance_name = "github-runner"
+machine_type  = "e2-standard-2"
+zone          = "asia-northeast1-a"
 
-## Details
+boot_disk_size_gb = 20
+
+github_runner_token_secret = "github-runner-token"
+github_org                 = "your-github-org"
+github_repo                = "your-repo"
+```
+
+Deploy:
+```bash
+terraform init
+terraform apply
+```
+
+#### 3. Create GitHub App and Deploy Runner Manager
+
+**Create GitHub App:**
+1. Go to GitHub Settings > Developer settings > GitHub Apps > New GitHub App
+2. Configure:
+   - **Repository permissions**: Administration: Read-only
+3. Install the app on your organization/repositories
+4. Note: **App ID**, **Installation ID**, and download the **Private Key**
+
+**Store GitHub App private key:**
+```bash
+gcloud secrets create github-app-private-key \
+  --data-file=path/to/private-key.pem \
+  --project=YOUR_PROJECT_ID
+```
+
+**Deploy Runner Manager:**
+```bash
+cd terraform/github-runner-manager
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit `terraform.tfvars`:
+```hcl
+project = "your-gcp-project-id"
+region  = "asia-northeast1"
+zone    = "asia-northeast1-a"
+
+github_app_id              = "123456"
+github_app_installation_id = "12345678"
+
+runner_config = <<-EOT
+[
+  {
+    "repo": "your-org/your-repo",
+    "labels": ["self-hosted"],
+    "vm_instance_name": "github-runner",
+    "vm_instance_zone": "asia-northeast1-a"
+  }
+]
+EOT
+
+inactive_minutes = "3"
+```
+
+Deploy:
+```bash
+terraform init
+terraform apply
+```
+
+#### 4. Configure GitHub Webhook
+
+You can configure the webhook at either the **organization level** (recommended for managing multiple repositories) or **repository level**.
+
+**Get the webhook URL and secret:**
+```bash
+terraform output webhook_url
+gcloud secrets versions access latest --secret=runner-manager-secret --project=YOUR_PROJECT_ID
+```
+
+**For Organization-level webhook (recommended):**
+1. Go to your GitHub organization: **Settings > Webhooks > Add webhook**
+2. Configure:
+   - **Payload URL**: Output from `terraform output webhook_url`
+   - **Content type**: `application/json`
+   - **Secret**: Output from the `gcloud secrets versions access` command
+   - **Events**: Select "Workflow jobs"
+   - **Active**: ✓ Checked
+
+**For Repository-level webhook:**
+1. Go to your repository: **Settings > Webhooks > Add webhook**
+2. Use the same configuration as above
+
+**Note**: Organization-level webhook allows you to manage all repositories with a single webhook configuration.
+
+## Components
 
 This project consists of three main components:
 
