@@ -1,10 +1,6 @@
 # GCP Project Configuration
 project = "your-gcp-project-id"
 region  = "asia-northeast1"
-zone    = "asia-northeast1-a"
-
-# Existing Runner VM Configuration
-runner_instance_name = "github-runner"  # Name of your existing VM
 
 # Runner Manager Configuration
 runner_manager_image = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
@@ -13,11 +9,18 @@ queue_name           = "runner-manager"
 # VM Auto-stop Configuration
 inactive_minutes = "15"
 
-# Target Labels (comma-separated)
-target_labels = "self-hosted"
-# Examples:
-# target_labels = "self-hosted,linux"
-# target_labels = "self-hosted,linux,gpu"
-
 # Deletion Protection
 deletion_protection = true  # Set to false to allow terraform destroy without extra steps
+
+# GitHub App Configuration
+github_app_id = "123456"  # Your GitHub App ID
+
+# Runner Configuration (JSON array)
+# Each entry maps a repository + labels to a specific VM instance
+# Format: [{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "...", "vm_instance_zone": "...", "github_installation_id": "..."}]
+
+# Single repository example:
+runner_config = '[{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "github-runner", "vm_instance_zone": "asia-northeast1-a", "github_installation_id": "12345678"}]'
+
+# Multiple repositories example:
+# runner_config = '[{"repo": "owner/repo1", "labels": ["self-hosted", "linux"], "vm_instance_name": "github-runner-linux", "vm_instance_zone": "asia-northeast1-a", "github_installation_id": "12345678"}, {"repo": "owner/repo2", "labels": ["self-hosted", "gpu"], "vm_instance_name": "github-runner-gpu", "vm_instance_zone": "us-central1-a", "github_installation_id": "87654321"}]'
