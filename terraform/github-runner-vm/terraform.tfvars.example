@@ -16,9 +16,9 @@ enable_external_ip = true
 # network_tags = ["github-runner", "http-server"]  # Optional firewall tags
 
 # GitHub Runner Configuration
-github_runner_token_secret = "github-runner-token"  # Secret Manager secret name
+github_runner_token_secret = "github-runner-token" # Secret Manager secret name
 github_org                 = "your-github-org"
-github_repo                = null  # null for org-wide runner, or "your-repo" for repo-specific
+github_repo                = "your-repo"           # Required for repository-level runner
 
 # Service Account Configuration
 service_account_id = "github-runner"

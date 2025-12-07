@@ -2,6 +2,9 @@
 
 This Terraform module creates a persistent Compute Engine VM instance configured as a GitHub Actions self-hosted runner.
 
+> [!IMPORTANT]
+> This module only supports **repository-level self-hosted runners**. Organization-level runners are not supported.
+
 ## Features
 
 - Creates a persistent VM instance (not preemptible)
@@ -29,7 +32,7 @@ module "github_runner" {
   # that installs and configures the runner on first boot
   github_runner_token_secret = "github-runner-token" # Secret Manager secret name
   github_org                 = "your-org"
-  # github_repo = "your-repo"  # Optional: omit for org-wide runner, specify for repo-specific runner
+  github_repo                = "your-repo"           # Required for repository-level runner
 
   # IAM roles for the runner VM service account
   # Note: This SA is for the VM itself, not for GitHub Actions workflows

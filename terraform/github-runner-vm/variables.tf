@@ -101,6 +101,5 @@ variable "github_org" {
 
 variable "github_repo" {
   type        = string
-  description = "GitHub repository name. If null, creates an org-wide runner. If specified, creates a repo-specific runner."
-  default     = null
+  description = "GitHub repository name (required for repository-level runner)"
 }

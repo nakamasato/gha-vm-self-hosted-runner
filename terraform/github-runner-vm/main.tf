@@ -2,8 +2,8 @@ data "google_project" "current" {}
 
 # Generate startup script
 locals {
-  # Construct GitHub URL from variables
-  github_url = var.github_repo != null ? "https://github.com/${var.github_org}/${var.github_repo}" : "https://github.com/${var.github_org}"
+  # Construct GitHub repository URL
+  github_url = "https://github.com/${var.github_org}/${var.github_repo}"
 
   # Startup script with auto-installation (when token secret is provided)
   startup_script_with_token = <<-EOF
