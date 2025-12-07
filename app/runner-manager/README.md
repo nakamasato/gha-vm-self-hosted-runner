@@ -26,7 +26,7 @@ graph TB
     end
 
     subgraph "Cloud Tasks"
-        CT[Stop VM Task<br/>Scheduled +15min<br/>after job completion]
+        CT[Stop VM Task<br/>Scheduled +N min<br/>after job completion]
     end
 
     subgraph "Compute Engine"
@@ -38,7 +38,7 @@ graph TB
     EP1 -->|if VM stopped| EP2
     EP1 -->|schedule stop task| CT
     EP2 -->|start VM| VM
-    CT -->|after 15min| EP3
+    CT -->|after N min| EP3
     EP3 -->|stop VM| VM
 
     style EP1 fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
@@ -128,7 +128,7 @@ sequenceDiagram
 
     alt Labels match
         CloudRun->>CloudTasks: Delete existing stop task<br/>(if exists)
-        CloudRun->>CloudTasks: Schedule new stop task<br/>(+15 minutes after completion)
+        CloudRun->>CloudTasks: Schedule new stop task<br/>(+N minutes after completion)
         CloudTasks-->>CloudRun: Task scheduled
     else Labels don't match
         CloudRun->>CloudRun: Skip stop task scheduling
@@ -136,7 +136,7 @@ sequenceDiagram
 
     CloudRun-->>GitHub: 200 OK {"status": "ok"}
 
-    Note over CloudTasks,ComputeEngine: After 15 minutes of inactivity
+    Note over CloudTasks,ComputeEngine: After N minutes of inactivity (VM_INACTIVE_MINUTES)
     CloudTasks->>CloudRun: POST /runner/stop
     CloudRun->>ComputeEngine: Stop VM
     ComputeEngine-->>CloudRun: VM stopped
