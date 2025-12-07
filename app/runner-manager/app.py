@@ -158,29 +158,26 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 
     logger.info(f"Received GitHub event: {event}, action: {payload.get('action')}")
 
-    if event == "workflow_job":
-        workflow_job = payload.get("workflow_job", {})
-        action = payload.get("action")
+    # Only handle workflow_job events
+    if event != "workflow_job":
+        return {"status": "ok"}
 
-        if action == "queued":
-            # Check if this job matches our target labels
-            if should_handle_job(workflow_job):
-                # VM起動（必要なら）
-                await start_runner_if_needed()
-            else:
-                logger.info(
-                    f"Skipping VM start: job labels do not match target labels {TARGET_LABELS}"
-                )
+    workflow_job = payload.get("workflow_job", {})
+    action = payload.get("action")
 
-        elif action == "completed":
-            # Check if this job matches our target labels
-            if should_handle_job(workflow_job):
-                # Schedule stop task after job completion
-                await schedule_stop_task()
-            else:
-                logger.info(
-                    f"Skipping stop task scheduling: job labels do not match target labels {TARGET_LABELS}"
-                )
+    # Check if this job matches our target labels
+    if not should_handle_job(workflow_job):
+        logger.info(f"Skipping: job labels do not match target labels {TARGET_LABELS}")
+        return {"status": "ok"}
+
+    # Handle matching jobs
+    if action == "queued":
+        # VM起動（必要なら）
+        await start_runner_if_needed()
+
+    elif action == "completed":
+        # Schedule stop task after job completion
+        await schedule_stop_task()
 
     return {"status": "ok"}
 
