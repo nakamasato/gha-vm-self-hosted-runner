@@ -219,8 +219,9 @@ sequenceDiagram
     participant CloudRun as Runner Manager<br/>(Cloud Run)
     participant ComputeEngine as VM Instance<br/>(Compute Engine)
     participant CloudTasks as Task Queue<br/>(Cloud Tasks)
+    participant GitHubAPI as GitHub API<br/>(Runner Status)
 
-    Note over GitHub,CloudTasks: workflow_job.queued event
+    Note over GitHub,GitHubAPI: workflow_job.queued event
     GitHub->>CloudRun: POST /github/webhook<br/>(workflow_job.queued)
     CloudRun->>CloudRun: Verify X-Hub-Signature-256
 
@@ -228,9 +229,9 @@ sequenceDiagram
         CloudRun-->>GitHub: 401 Unauthorized
     end
 
-    CloudRun->>CloudRun: should_handle_job()<br/>Check if all TARGET_LABELS<br/>are in job labels
+    CloudRun->>CloudRun: find_matching_vm()<br/>Match repo & labels<br/>with RUNNER_CONFIG
 
-    alt Labels match
+    alt VM config found
         CloudRun->>ComputeEngine: Get VM instance status
 
         alt VM not running
@@ -239,33 +240,46 @@ sequenceDiagram
         else VM already running
             ComputeEngine-->>CloudRun: Already running
         end
-
-        CloudRun->>CloudTasks: Delete existing stop task<br/>(prevent premature shutdown)
-    else Labels don't match
-        CloudRun->>CloudRun: Skip VM start
+    else No matching VM
+        CloudRun->>CloudRun: Skip (no action)
     end
 
     CloudRun-->>GitHub: 200 OK {"status": "ok"}
 
-    Note over GitHub,CloudTasks: workflow_job.completed event
+    Note over GitHub,GitHubAPI: workflow_job.completed event
     GitHub->>CloudRun: POST /github/webhook<br/>(workflow_job.completed)
     CloudRun->>CloudRun: Verify X-Hub-Signature-256
-    CloudRun->>CloudRun: should_handle_job()<br/>Check if all TARGET_LABELS<br/>are in job labels
+    CloudRun->>CloudRun: find_matching_vm()<br/>Match repo & labels<br/>with RUNNER_CONFIG
 
-    alt Labels match
-        CloudRun->>CloudTasks: Delete existing stop task<br/>(if exists)
-        CloudRun->>CloudTasks: Schedule new stop task<br/>(+N minutes after completion)
+    alt VM config found
+        CloudRun->>CloudTasks: Schedule stop task<br/>(+VM_INACTIVE_MINUTES)
         CloudTasks-->>CloudRun: Task scheduled
-    else Labels don't match
-        CloudRun->>CloudRun: Skip stop task scheduling
+    else No matching VM
+        CloudRun->>CloudRun: Skip (no action)
     end
 
     CloudRun-->>GitHub: 200 OK {"status": "ok"}
 
-    Note over CloudTasks,ComputeEngine: After N minutes of inactivity (VM_INACTIVE_MINUTES)
-    CloudTasks->>CloudRun: POST /runner/stop
-    CloudRun->>ComputeEngine: Stop VM
-    ComputeEngine-->>CloudRun: VM stopped
+    Note over CloudTasks,GitHubAPI: After VM_INACTIVE_MINUTES
+    CloudTasks->>CloudRun: POST /runner/stop<br/>(X-Runner-Secret header)
+    CloudRun->>CloudRun: Verify X-Runner-Secret
+
+    CloudRun->>GitHubAPI: Check runner busy status<br/>(via GitHub App auth)
+    GitHubAPI-->>CloudRun: Runner status & busy flag
+
+    alt Runner is busy
+        CloudRun->>CloudTasks: Schedule new stop task<br/>(+1 minute)
+        CloudRun-->>CloudTasks: 200 OK {"status": "busy"}
+    else Runner is idle or not found
+        CloudRun->>ComputeEngine: Get VM status
+        alt VM is running
+            CloudRun->>ComputeEngine: Stop VM
+            ComputeEngine-->>CloudRun: VM stopping
+            CloudRun-->>CloudTasks: 200 OK {"status": "stopping"}
+        else VM already stopped
+            CloudRun-->>CloudTasks: 200 OK {"status": "already_stopped"}
+        end
+    end
 ```
 
 **Documentation:**
