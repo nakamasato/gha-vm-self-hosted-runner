@@ -85,11 +85,13 @@ module "github_runner" {
 
 ## GitHub Runner Token Setup
 
+> [!IMPORTANT]
+> This module only supports **repository-level self-hosted runners**. Organization-level runners are not supported.
+
 To use the GitHub runner token feature, you need to:
 
 1. Generate a runner registration token from GitHub:
-   - **For org-wide runner**: Go to Organization Settings > Actions > Runners > New runner
-   - **For repo-specific runner**: Go to Repository Settings > Actions > Runners > New self-hosted runner
+   - Go to Repository Settings > Actions > Runners > New self-hosted runner
    - Copy the token from the configuration command
 
 2. Store the token in Secret Manager:
