@@ -3,27 +3,6 @@ locals {
   region       = var.region
 }
 
-# Moved blocks for resource renaming (temporary, can be removed after apply)
-moved {
-  from = random_string.webhook_secret
-  to   = random_string.runner_manager_secret
-}
-
-moved {
-  from = google_secret_manager_secret.webhook_secret
-  to   = google_secret_manager_secret.runner_manager_secret
-}
-
-moved {
-  from = google_secret_manager_secret_version.webhook_secret_version
-  to   = google_secret_manager_secret_version.runner_manager_secret_version
-}
-
-moved {
-  from = google_secret_manager_secret_iam_member.runner_manager_webhook_secret
-  to   = google_secret_manager_secret_iam_member.runner_manager_secret_access
-}
-
 # Data source for project
 data "google_project" "current" {
   project_id = var.project
