@@ -268,7 +268,7 @@ Service information.
 | `CLOUD_TASK_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
 | `CLOUD_TASK_QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-manager` |
 | `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
-| `GITHUB_WEBHOOK_SECRET` | Shared secret for authentication (GitHub webhook and runner control) | Yes | `your-secret` |
+| `RUNNER_MANAGER_SECRET` | Shared secret for authentication (GitHub webhook and runner control) | Yes | `your-secret` |
 | `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
 
 **Label Filtering (`TARGET_LABELS`):**
@@ -309,7 +309,7 @@ Service information.
    export CLOUD_TASK_LOCATION=asia-northeast1
    export CLOUD_TASK_QUEUE_NAME=runner-manager
    export CLOUD_RUN_SERVICE_URL=http://localhost:8080
-   export GITHUB_WEBHOOK_SECRET=your-secret
+   export RUNNER_MANAGER_SECRET=your-secret
    ```
 
 2. Run locally:
@@ -353,7 +353,7 @@ docker run -p 8080:8080 \
   -e CLOUD_TASK_LOCATION=asia-northeast1 \
   -e CLOUD_TASK_QUEUE_NAME=runner-manager \
   -e CLOUD_RUN_SERVICE_URL=http://localhost:8080 \
-  -e GITHUB_WEBHOOK_SECRET=your-secret \
+  -e RUNNER_MANAGER_SECRET=your-secret \
   github-runner-manager
 ```
 

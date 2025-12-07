@@ -32,7 +32,7 @@ CLOUD_TASK_LOCATION = os.getenv("CLOUD_TASK_LOCATION")
 CLOUD_TASK_QUEUE_NAME = os.getenv("CLOUD_TASK_QUEUE_NAME")
 VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "3"))
 CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
-GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
+RUNNER_MANAGER_SECRET = os.getenv("RUNNER_MANAGER_SECRET")
 
 # Target labels for runner filtering (comma-separated)
 # Example: "self-hosted,linux" or "self-hosted"
@@ -47,7 +47,7 @@ required_vars = {
     "CLOUD_TASK_LOCATION": CLOUD_TASK_LOCATION,
     "CLOUD_TASK_QUEUE_NAME": CLOUD_TASK_QUEUE_NAME,
     "CLOUD_RUN_SERVICE_URL": CLOUD_RUN_SERVICE_URL,
-    "GITHUB_WEBHOOK_SECRET": GITHUB_WEBHOOK_SECRET,
+    "RUNNER_MANAGER_SECRET": RUNNER_MANAGER_SECRET,
 }
 
 missing_vars = [name for name, value in required_vars.items() if not value]
@@ -73,8 +73,8 @@ def verify_github_signature(payload: bytes, signature_header: str) -> bool:
         logger.warning("Missing X-Hub-Signature-256 header")
         return False
 
-    if not GITHUB_WEBHOOK_SECRET:
-        logger.error("GITHUB_WEBHOOK_SECRET not configured")
+    if not RUNNER_MANAGER_SECRET:
+        logger.error("RUNNER_MANAGER_SECRET not configured")
         return False
 
     # GitHub sends signature as "sha256=<hash>"
@@ -89,7 +89,7 @@ def verify_github_signature(payload: bytes, signature_header: str) -> bool:
         return False
 
     # Calculate expected signature
-    mac = hmac.new(GITHUB_WEBHOOK_SECRET.encode(), msg=payload, digestmod=hashlib.sha256)
+    mac = hmac.new(RUNNER_MANAGER_SECRET.encode(), msg=payload, digestmod=hashlib.sha256)
     expected_signature = mac.hexdigest()
 
     # Constant-time comparison to prevent timing attacks
@@ -117,12 +117,12 @@ def verify_runner_secret(secret_header: str | None) -> bool:
         logger.warning("Missing X-Runner-Secret header")
         raise HTTPException(status_code=401, detail="Missing X-Runner-Secret header")
 
-    if not GITHUB_WEBHOOK_SECRET:
-        logger.error("GITHUB_WEBHOOK_SECRET not configured")
+    if not RUNNER_MANAGER_SECRET:
+        logger.error("RUNNER_MANAGER_SECRET not configured")
         raise HTTPException(status_code=500, detail="Server configuration error")
 
     # Constant-time comparison to prevent timing attacks
-    is_valid = hmac.compare_digest(GITHUB_WEBHOOK_SECRET, secret_header)
+    is_valid = hmac.compare_digest(RUNNER_MANAGER_SECRET, secret_header)
 
     if not is_valid:
         logger.warning("Invalid runner control secret")
@@ -302,7 +302,7 @@ async def schedule_stop_task():
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": f"{CLOUD_RUN_SERVICE_URL}/runner/stop",
-                "headers": {"X-Runner-Secret": GITHUB_WEBHOOK_SECRET},
+                "headers": {"X-Runner-Secret": RUNNER_MANAGER_SECRET},
             },
             "schedule_time": schedule_time,
         }

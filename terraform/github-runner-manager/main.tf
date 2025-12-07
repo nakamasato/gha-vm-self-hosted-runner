@@ -109,7 +109,7 @@ resource "google_cloud_run_v2_service" "runner_manager" {
       }
 
       env {
-        name = "GITHUB_WEBHOOK_SECRET"
+        name = "RUNNER_MANAGER_SECRET"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.runner_manager_secret.secret_id
