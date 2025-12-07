@@ -39,7 +39,7 @@ graph TB
     EP1 -->|schedule stop task| CT
     EP2 -->|start VM| VM
     CT -->|after N min| EP3
-    EP3 -->|stop VM| VM
+    EP3 -->|stop VM if not busy| VM
 
     style EP1 fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
     style VM fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
