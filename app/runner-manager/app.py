@@ -365,11 +365,11 @@ async def stop_runner(request: Request, x_runner_secret: str = Header(None)):
             # Check if the runner is busy
             is_busy = await check_runner_busy(vm_config)
             if is_busy:
-                logger.info(f"Skipping VM stop: runner '{vm_instance_name}' is busy")
-                return {
-                    "status": "skipped",
-                    "reason": "runner_busy",
-                }
+                logger.info(f"Runner '{vm_instance_name}' is busy, returning 429 for retry")
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Runner '{vm_instance_name}' is currently busy executing a job. Cloud Tasks will retry later.",
+                )
 
         instance = compute_client.get(
             project=GCP_PROJECT_ID, zone=vm_instance_zone, instance=vm_instance_name
