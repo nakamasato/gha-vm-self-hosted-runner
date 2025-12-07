@@ -11,27 +11,36 @@ This service receives GitHub webhook events and automatically manages the VM ins
 
 ## Architecture
 
-```
-  ┌─────────────┐        ┌──────────────────────────────────────┐
-  │   GitHub    │───────▶│  Cloud Run Service                   │
-  │  Webhooks   │        │                                      │
-  └─────────────┘        │  POST /github/webhook                │
-                         │    ↓                                 │
-                         │    ├→ POST /runner/start (if needed) │
-                         │    └→ Cloud Tasks: /runner/stop      │
-                         │       (after 15min, delete old task) │
-                         │                                      │
-                         │  POST /runner/start                  │
-                         │    - Start VM                        │
-                         │                                      │
-                         │  POST /runner/stop                   │
-                         │    - Stop VM                         │
-                         └──────────────────────────────────────┘
-                                        ↓
-                                ┌──────────────┐
-                                │ Cloud Tasks  │
-                                │ (15min delay)│
-                                └──────────────┘
+```mermaid
+graph TB
+    subgraph GitHub
+        WH[Webhook: workflow_job.queued]
+    end
+
+    subgraph "Cloud Run Service"
+        EP1[POST /github/webhook]
+        EP2[POST /runner/start]
+        EP3[POST /runner/stop]
+    end
+
+    subgraph "Cloud Tasks"
+        CT[Stop VM Task<br/>Scheduled +15min]
+    end
+
+    subgraph "Compute Engine"
+        VM[Runner VM]
+    end
+
+    WH -->|webhook event| EP1
+    EP1 -->|if needed| EP2
+    EP1 -->|schedule task<br/>delete old task| CT
+    EP2 -->|start VM| VM
+    CT -->|after 15min| EP3
+    EP3 -->|stop VM| VM
+
+    style EP1 fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
+    style VM fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
+    style CT fill:#fbbc04,stroke:#333,stroke-width:2px
 ```
 
 ## Endpoints
@@ -99,35 +108,6 @@ Service information.
 }
 ```
 
-## Label Filtering
-
-The Runner Manager can be configured to only respond to jobs with specific labels using the `TARGET_LABELS` environment variable.
-
-**How it works:**
-- The service checks the `labels` field in the `workflow_job` webhook payload
-- VM is only started if **ALL** target labels are present in the job labels
-- Default: `self-hosted` (manages any self-hosted runner job)
-
-**Examples:**
-
-```bash
-# Manage any self-hosted job (default)
-TARGET_LABELS=self-hosted
-
-# Only manage Linux self-hosted jobs
-TARGET_LABELS=self-hosted,linux
-
-# Only manage GPU-enabled Linux self-hosted jobs
-TARGET_LABELS=self-hosted,linux,gpu
-```
-
-**Workflow configuration:**
-```yaml
-jobs:
-  build:
-    runs-on: [self-hosted, linux, gpu]  # Must match TARGET_LABELS
-```
-
 ## Environment Variables
 
 | Variable | Description | Required | Example |
@@ -141,6 +121,12 @@ jobs:
 | `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | Yes | `your-secret` |
 | `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |
+
+**Label Filtering (`TARGET_LABELS`):**
+1. The service checks the `labels` field in the `workflow_job` webhook payload
+2. VM is only started if **ALL** target labels are present in the job labels
+3. Default: `self-hosted` (manages any self-hosted runner job)
+4. Example workflow: `runs-on: [self-hosted, linux, gpu]` matches `TARGET_LABELS=self-hosted,linux,gpu`
 
 ## Development
 

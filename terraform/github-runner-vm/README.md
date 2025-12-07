@@ -156,4 +156,3 @@ This module currently uses a static GitHub token stored in Secret Manager, which
 For a more robust solution, consider implementing:
 - **GitHub App authentication**: Provides better security and automatic token refresh
 - **Automated token rotation**: Using Cloud Functions or Cloud Run to periodically refresh tokens
-- **Monitoring**: Alert when tokens are approaching expiration
