@@ -2,6 +2,9 @@
 
 Cost-efficient GitHub Actions self-hosted runner on GCP with automatic VM lifecycle management.
 
+> [!IMPORTANT]
+> This runner manager supports **repository-level self-hosted runners only**. Organization-level runners are not supported because the GitHub API does not provide accurate busy status for runners shared across multiple repositories in an organization.
+
 ## Motivation
 
 This project addresses common challenges when running GitHub Actions self-hosted runners on GCP:
