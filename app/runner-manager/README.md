@@ -113,6 +113,8 @@ sequenceDiagram
         else VM already running
             ComputeEngine-->>CloudRun: Already running
         end
+
+        CloudRun->>CloudTasks: Delete existing stop task<br/>(prevent premature shutdown)
     else Labels don't match
         CloudRun->>CloudRun: Skip VM start
     end

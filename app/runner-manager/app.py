@@ -31,7 +31,7 @@ VM_INSTANCE_NAME = os.getenv("VM_INSTANCE_NAME")
 CLOUD_TASK_LOCATION = os.getenv("CLOUD_TASK_LOCATION")
 CLOUD_TASK_QUEUE_NAME = os.getenv("CLOUD_TASK_QUEUE_NAME")
 CLOUD_TASK_SERVICE_ACCOUNT_EMAIL = os.getenv("CLOUD_TASK_SERVICE_ACCOUNT_EMAIL")
-VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "15"))
+VM_INACTIVE_MINUTES = int(os.getenv("VM_INACTIVE_MINUTES", "3"))
 CLOUD_RUN_SERVICE_URL = os.getenv("CLOUD_RUN_SERVICE_URL")
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
 
@@ -175,6 +175,8 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
     if action == "queued":
         # VM起動（必要なら）
         await start_runner_if_needed()
+        # Delete any existing stop task to prevent premature VM shutdown
+        await delete_stop_task()
 
     elif action == "completed":
         # Schedule stop task after job completion
@@ -231,23 +233,34 @@ async def stop_runner():
         raise HTTPException(status_code=500, detail=f"Failed to stop VM: {str(e)}") from e
 
 
-async def schedule_stop_task():
-    """15分後にstopを実行するCloud Taskを作成（古いタスクは削除）"""
+async def delete_stop_task():
+    """既存のstopタスクを削除"""
     try:
         parent = tasks_client.queue_path(GCP_PROJECT_ID, CLOUD_TASK_LOCATION, CLOUD_TASK_QUEUE_NAME)
         task_name = f"{parent}/tasks/stop-{VM_INSTANCE_NAME}"
 
-        # 既存のタスクを削除（存在すれば）
         try:
             tasks_client.delete_task(name=task_name)
             logger.info(f"Deleted existing stop task: {task_name}")
         except NotFound:
-            logger.debug("No existing task to delete (this is normal)")
+            logger.debug("No existing stop task to delete")
         except Exception as e:
             logger.error(f"Unexpected error deleting task: {e}")
             raise
+    except Exception as e:
+        logger.error(f"Error in delete_stop_task: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete stop task: {str(e)}") from e
 
-        # 15分後のタスクを作成
+
+async def schedule_stop_task():
+    """Job完了後の指定時間後にstopを実行するCloud Taskを作成（古いタスクは削除）"""
+    try:
+        # 既存のタスクを削除
+        await delete_stop_task()
+
+        # タスク作成の準備
+        parent = tasks_client.queue_path(GCP_PROJECT_ID, CLOUD_TASK_LOCATION, CLOUD_TASK_QUEUE_NAME)
+        task_name = f"{parent}/tasks/stop-{VM_INSTANCE_NAME}"
         schedule_time = datetime.now(timezone.utc) + timedelta(minutes=VM_INACTIVE_MINUTES)
 
         task = {
