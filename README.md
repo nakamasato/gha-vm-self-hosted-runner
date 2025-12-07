@@ -139,6 +139,8 @@ terraform init
 terraform apply
 ```
 
+[See detailed documentation →](./terraform/github-runner-vm/README.md)
+
 #### 3. Create GitHub App and Deploy Runner Manager
 
 **Create GitHub App:**
@@ -190,7 +192,7 @@ terraform init
 terraform apply
 ```
 
-#### 4. Configure GitHub Webhook
+**Configure GitHub Webhook**
 
 You can configure the webhook at either the **organization level** (recommended for managing multiple repositories) or **repository level**.
 
@@ -214,6 +216,8 @@ gcloud secrets versions access latest --secret=runner-manager-secret --project=Y
 2. Use the same configuration as above
 
 **Note**: Organization-level webhook allows you to manage all repositories with a single webhook configuration.
+
+[See detailed documentation →](./app/runner-manager/README.md)
 
 ## Components
 
