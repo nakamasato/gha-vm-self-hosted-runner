@@ -7,7 +7,7 @@ This Terraform module deploys the GitHub Runner Manager infrastructure on GCP. I
 1. **Runner Manager Service**: A Cloud Run service that receives GitHub webhooks and manages VM lifecycle
 2. **Cloud Tasks Queue**: For scheduling automatic VM shutdown after inactivity
 3. **Service Accounts**: With appropriate IAM permissions to start/stop the VM
-4. **Secret Manager**: For storing GitHub webhook secret
+4. **Secret Manager**: For storing runner manager authentication secret
 
 ## Prerequisites
 
@@ -83,9 +83,9 @@ After deployment, configure the webhook in GitHub:
 # Get the webhook URL from Terraform output
 terraform output webhook_url
 
-# Get the webhook secret from Secret Manager
+# Get the runner manager secret from Secret Manager
 export PROJECT_ID="your-gcp-project-id"
-gcloud secrets versions access latest --secret=github-webhook-secret --project=$PROJECT_ID
+gcloud secrets versions access latest --secret=runner-manager-secret --project=$PROJECT_ID
 ```
 
 **GitHub Webhook Configuration:**
@@ -195,7 +195,7 @@ gcloud tasks queues describe runner-manager \
 - `runner_manager_service_account`: Email of the service account
 - `cloud_tasks_queue_name`: Name of the Cloud Tasks queue
 - `webhook_url`: GitHub webhook URL (use this in GitHub settings)
-- `webhook_secret_id`: Secret Manager secret ID for the webhook secret
+- `runner_manager_secret_id`: Secret Manager secret ID for runner manager authentication
 
 ## Troubleshooting
 
@@ -207,7 +207,7 @@ gcloud run services logs read github-runner-manager --region=asia-northeast1
 ```
 
 Common issues:
-- Invalid webhook signature → Verify the secret in GitHub webhook matches Secret Manager (use `gcloud secrets versions access latest --secret=github-webhook-secret`)
+- Invalid signature → Verify the secret in GitHub webhook matches Secret Manager (use `gcloud secrets versions access latest --secret=runner-manager-secret`)
 - Missing permissions → Verify service account has `roles/compute.instanceAdmin.v1`
 - Wrong VM name → Check `runner_instance_name` matches your actual VM name
 
@@ -270,7 +270,7 @@ terraform destroy
 - Cloud Run service
 - Cloud Tasks queue
 - Service accounts
-- Webhook secret
+- Runner manager secret
 
 It will **NOT** delete your runner VM (as it's not managed by this module).
 
@@ -297,8 +297,8 @@ output "webhook_url" {
   value = module.github_runner_manager.webhook_url
 }
 
-output "webhook_secret_id" {
-  value = module.github_runner_manager.webhook_secret_id
+output "runner_manager_secret_id" {
+  value = module.github_runner_manager.runner_manager_secret_id
 }
 ```
 

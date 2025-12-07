@@ -125,7 +125,7 @@ graph TB
    - Go to your GitHub organization/repository Settings > Webhooks
    - Add webhook with Cloud Run URL: `https://your-service-url.run.app/github/webhook`
    - Select event: `Workflow jobs`
-   - Configure webhook secret
+   - Configure secret (use runner manager secret from Secret Manager)
 
 ## CI/CD
 
