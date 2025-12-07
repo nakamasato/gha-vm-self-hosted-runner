@@ -233,7 +233,9 @@ Terraform module that creates a persistent GCP Compute Engine VM configured as a
 
 [See detailed documentation →](./terraform/github-runner-vm/README.md)
 
-### 2. [Runner Manager](./app/runner-manager/)
+### 2. Runner Manager
+
+#### 2.1. [Runner Manager (App)](./app/runner-manager/)
 
 FastAPI-based Cloud Run service that manages VM lifecycle in response to GitHub webhooks.
 
@@ -250,7 +252,7 @@ FastAPI-based Cloud Run service that manages VM lifecycle in response to GitHub 
 
 [See detailed documentation →](./app/runner-manager/README.md)
 
-### 3. [Runner Manager Infrastructure](./terraform/github-runner-manager/)
+#### 2.2. [Runner Manager (Infrastructure)](./terraform/github-runner-manager/)
 
 Terraform configuration for deploying the Runner Manager service on GCP.
 
@@ -269,9 +271,9 @@ Terraform configuration for deploying the Runner Manager service on GCP.
 
 For **organization-level self-hosted runners**, the current implementation may not return accurate runner status, as organization runners can be assigned to jobs from different repositories within the organization. If you need to manage organization-level runners, you may need to modify the implementation to check organization runners instead of repository runners.
 
-### GitHub Token Management
+### GitHub Self-Hosted Runner Registration Token
 
-This project currently uses a static GitHub token stored in Secret Manager, which has the following limitations:
+The VM module uses a GitHub token for registering the self-hosted runner during VM initialization. This token is stored in Secret Manager and has the following limitations:
 
 1. **Token Expiration**:
    - **Registration tokens from GitHub UI**: Expire after **1 hour**
