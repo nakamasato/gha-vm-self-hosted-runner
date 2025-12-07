@@ -32,7 +32,7 @@ variable "runner_manager_image" {
 variable "queue_name" {
   description = "Cloud Tasks queue name"
   type        = string
-  default     = "runner-controller"
+  default     = "runner-manager"
 }
 
 variable "inactive_minutes" {

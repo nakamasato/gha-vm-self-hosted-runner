@@ -8,7 +8,7 @@ runner_instance_name = "github-runner"  # Name of your existing VM
 
 # Runner Manager Configuration
 runner_manager_image = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
-queue_name           = "runner-controller"
+queue_name           = "runner-manager"
 
 # VM Auto-stop Configuration
 inactive_minutes = "15"

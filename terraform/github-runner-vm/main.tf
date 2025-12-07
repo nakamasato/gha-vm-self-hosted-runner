@@ -31,6 +31,7 @@ if [ ! -f /var/lib/cloud/instance/runner-tools-installed ]; then
     python3 \
     python3-pip \
     python3-venv \
+    python-is-python3 \
     docker.io \
     docker-compose
 

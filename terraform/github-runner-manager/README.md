@@ -56,7 +56,7 @@ runner_instance_name   = "github-runner"      # Name of your existing VM
 ```hcl
 region               = "asia-northeast1"      # Region for Cloud Run
 runner_manager_image = "docker.io/nakamasato/gha-vm-self-hosted-runner:latest"
-queue_name           = "runner-controller"
+queue_name           = "runner-manager"
 inactive_minutes     = "15"                   # VM auto-stop timeout
 target_labels        = "self-hosted"          # Job label filtering
 deletion_protection  = true                   # Prevent accidental deletion
@@ -184,7 +184,7 @@ gcloud compute instances describe github-runner \
 ### Cloud Tasks Queue
 
 ```bash
-gcloud tasks queues describe runner-controller \
+gcloud tasks queues describe runner-manager \
   --project=$PROJECT_ID \
   --location=asia-northeast1
 ```
@@ -227,7 +227,7 @@ curl https://your-service-url.run.app/
 
 Check Cloud Tasks queue:
 ```bash
-gcloud tasks list --queue=runner-controller --location=asia-northeast1
+gcloud tasks list --queue=runner-manager --location=asia-northeast1
 ```
 
 If tasks are stuck, check:
