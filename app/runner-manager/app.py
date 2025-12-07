@@ -365,11 +365,15 @@ async def stop_runner(request: Request, x_runner_secret: str = Header(None)):
             # Check if the runner is busy
             is_busy = await check_runner_busy(vm_config)
             if is_busy:
-                logger.info(f"Runner '{vm_instance_name}' is busy, returning 429 for retry")
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Runner '{vm_instance_name}' is currently busy executing a job. Cloud Tasks will retry later.",
+                logger.info(
+                    f"Runner '{vm_instance_name}' is busy, scheduling another check in 1 minute"
                 )
+                # Schedule a new stop task to check again in 1 minute
+                await schedule_stop_task(vm_config, delay_minutes=1)
+                return {
+                    "status": "busy",
+                    "message": "Runner is busy, scheduled another stop task in 1 minute",
+                }
 
         instance = compute_client.get(
             project=GCP_PROJECT_ID, zone=vm_instance_zone, instance=vm_instance_name
@@ -390,21 +394,25 @@ async def stop_runner(request: Request, x_runner_secret: str = Header(None)):
         raise HTTPException(status_code=500, detail=f"Failed to stop VM: {str(e)}") from e
 
 
-async def schedule_stop_task(vm_config: dict):
+async def schedule_stop_task(vm_config: dict, delay_minutes: int | None = None):
     """Job完了後の指定時間後にstopを実行するCloud Taskを作成
 
     Args:
         vm_config: VM configuration dict containing vm_instance_name and vm_instance_zone
+        delay_minutes: Delay in minutes before executing stop task. If None, uses VM_INACTIVE_MINUTES
     """
     try:
         vm_instance_name = vm_config.get("vm_instance_name")
         vm_instance_zone = vm_config.get("vm_instance_zone")
 
+        # Use provided delay or default to VM_INACTIVE_MINUTES
+        delay = delay_minutes if delay_minutes is not None else VM_INACTIVE_MINUTES
+
         # タスク作成の準備（タイムスタンプでユニークなIDを生成）
         parent = tasks_client.queue_path(GCP_PROJECT_ID, CLOUD_TASK_LOCATION, CLOUD_TASK_QUEUE_NAME)
         timestamp = int(datetime.now(timezone.utc).timestamp())
         task_name = f"{parent}/tasks/stop-{vm_instance_name}-{timestamp}"
-        schedule_time = datetime.now(timezone.utc) + timedelta(minutes=VM_INACTIVE_MINUTES)
+        schedule_time = datetime.now(timezone.utc) + timedelta(minutes=delay)
 
         # Task payload with VM information
         payload = json.dumps(
@@ -426,8 +434,10 @@ async def schedule_stop_task(vm_config: dict):
         }
 
         tasks_client.create_task(parent=parent, task=task)
-        logger.info(f"Scheduled stop task for {vm_instance_name} at {schedule_time.isoformat()}")
-        return {"scheduled_at": schedule_time.isoformat()}
+        logger.info(
+            f"Scheduled stop task for {vm_instance_name} at {schedule_time.isoformat()} (delay: {delay} minutes)"
+        )
+        return {"scheduled_at": schedule_time.isoformat(), "delay_minutes": delay}
 
     except Exception as e:
         logger.error(f"Error scheduling stop task: {e}")
