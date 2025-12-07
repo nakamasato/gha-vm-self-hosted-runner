@@ -204,45 +204,4 @@ docker run -p 8080:8080 \
 
 ### Deploy to Cloud Run
 
-#### Option 1: With gcloud
-
-**Using pre-built Docker Hub image (production):**
-```bash
-gcloud run deploy github-runner-manager \
-  --image docker.io/nakamasato/gha-vm-self-hosted-runner:latest \
-  --platform managed \
-  --region asia-northeast1 \
-  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,VM_INSTANCE_ZONE=ZONE,VM_INSTANCE_NAME=NAME,VM_INACTIVE_MINUTES=15,CLOUD_TASK_LOCATION=LOCATION,CLOUD_TASK_QUEUE_NAME=QUEUE,CLOUD_RUN_SERVICE_URL=SERVICE_URL,GITHUB_WEBHOOK_SECRET=SECRET \
-  --service-account runner-manager@PROJECT_ID.iam.gserviceaccount.com \
-  --allow-unauthenticated
-```
-
-**Using pre-built Docker Hub image (development):**
-```bash
-gcloud run deploy github-runner-manager-dev \
-  --image docker.io/nakamasato/gha-vm-self-hosted-runner-dev:latest \
-  --platform managed \
-  --region asia-northeast1 \
-  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,VM_INSTANCE_ZONE=ZONE,VM_INSTANCE_NAME=NAME,VM_INACTIVE_MINUTES=15,CLOUD_TASK_LOCATION=LOCATION,CLOUD_TASK_QUEUE_NAME=QUEUE,CLOUD_RUN_SERVICE_URL=SERVICE_URL,GITHUB_WEBHOOK_SECRET=SECRET \
-  --service-account runner-manager@PROJECT_ID.iam.gserviceaccount.com \
-  --allow-unauthenticated
-```
-
-**Build and deploy custom image:**
-```bash
-# Build and push to Google Container Registry
-gcloud builds submit --tag gcr.io/PROJECT_ID/github-runner-manager
-
-# Deploy to Cloud Run
-gcloud run deploy github-runner-manager \
-  --image gcr.io/PROJECT_ID/github-runner-manager \
-  --platform managed \
-  --region asia-northeast1 \
-  --set-env-vars GCP_PROJECT_ID=PROJECT_ID,VM_INSTANCE_ZONE=ZONE,VM_INSTANCE_NAME=NAME,VM_INACTIVE_MINUTES=15,CLOUD_TASK_LOCATION=LOCATION,CLOUD_TASK_QUEUE_NAME=QUEUE,CLOUD_RUN_SERVICE_URL=SERVICE_URL,GITHUB_WEBHOOK_SECRET=SECRET \
-  --service-account runner-manager@PROJECT_ID.iam.gserviceaccount.com \
-  --allow-unauthenticated
-```
-
-#### Option 2: With Terraform
-
-For infrastructure-as-code deployment, see the [Terraform configuration documentation](../../terraform/github-runner-manager/README.md).
+For infrastructure-as-code deployment including Cloud Tasks queue setup, see the [Terraform configuration documentation](../../terraform/github-runner-manager/README.md).
