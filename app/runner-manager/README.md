@@ -53,53 +53,48 @@ The Runner Manager supports multiple repositories with separate VMs from a singl
 **Configuration-Based Routing:**
 
 ```mermaid
-flowchart TD
-    subgraph "GitHub Repositories"
-        R1[owner/repo-a<br/>labels: self-hosted]
-        R2[owner/repo-b<br/>labels: self-hosted, gpu]
-        R3[owner/repo-c<br/>labels: self-hosted]
+flowchart LR
+    subgraph repos["GitHub Repositories"]
+        R1["owner/repo-a<br/>(labels: self-hosted)"]
+        R2["owner/repo-b<br/>(labels: self-hosted, gpu)"]
+        R3["owner/repo-c<br/>(labels: self-hosted)"]
     end
 
-    subgraph "Runner Manager (Cloud Run)"
+    subgraph manager["Runner Manager (Cloud Run)"]
         WH[Webhook Endpoint<br/>/github/webhook]
-
-        subgraph "RUNNER_CONFIG Matching"
-            M1{Match repo?}
-            M2{Match labels?}
-        end
+        M1{Match<br/>repo?}
+        M2{Match<br/>labels?}
     end
 
-    subgraph "Compute Engine VMs"
-        VM1[github-runner-a<br/>asia-northeast1-a]
-        VM2[github-runner-b<br/>us-central1-a]
-        VM3[github-runner-c<br/>europe-west1-a]
+    subgraph vms["Compute Engine VMs"]
+        VM1["github-runner-a<br/>asia-northeast1-a"]
+        VM2["github-runner-b<br/>us-central1-a"]
+        VM3["github-runner-c<br/>europe-west1-a"]
     end
 
-    R1 -->|workflow_job event| WH
-    R2 -->|workflow_job event| WH
-    R3 -->|workflow_job event| WH
+    SKIP["Skip<br/>(return 200 OK)"]
+
+    R1 -->|workflow_job| WH
+    R2 -->|workflow_job| WH
+    R3 -->|workflow_job| WH
 
     WH --> M1
-    M1 -->|repo: owner/repo-a<br/>labels: [self-hosted]| M2
-    M2 -->|All labels match| VM1
+    M1 -->|Yes| M2
+    M1 -->|No| SKIP
+    M2 -->|Yes| ROUTE[Route to VM]
+    M2 -->|No| SKIP
 
-    WH --> M1
-    M1 -->|repo: owner/repo-b<br/>labels: [self-hosted, gpu]| M2
-    M2 -->|All labels match| VM2
-
-    WH --> M1
-    M1 -->|repo: owner/repo-c<br/>labels: [self-hosted]| M2
-    M2 -->|All labels match| VM3
-
-    M1 -->|No match| SKIP[Skip: return ok]
-    M2 -->|Labels mismatch| SKIP
+    ROUTE -.->|repo-a| VM1
+    ROUTE -.->|repo-b| VM2
+    ROUTE -.->|repo-c| VM3
 
     style WH fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
+    style M1 fill:#fbbc04,stroke:#333,stroke-width:2px
+    style M2 fill:#fbbc04,stroke:#333,stroke-width:2px
+    style ROUTE fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
     style VM1 fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
     style VM2 fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
     style VM3 fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
-    style M1 fill:#fbbc04,stroke:#333,stroke-width:2px
-    style M2 fill:#fbbc04,stroke:#333,stroke-width:2px
     style SKIP fill:#ea4335,stroke:#333,stroke-width:2px,color:#fff
 ```
 
