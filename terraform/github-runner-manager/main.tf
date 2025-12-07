@@ -23,10 +23,10 @@ resource "google_project_iam_member" "runner_manager_compute" {
   member  = google_service_account.runner_manager.member
 }
 
-# IAM: Cloud Tasks Enqueuer
+# IAM: Cloud Tasks Queue Admin (needed for tasks.create and tasks.delete)
 resource "google_project_iam_member" "runner_manager_tasks" {
   project = var.project
-  role    = "roles/cloudtasks.enqueuer"
+  role    = "roles/cloudtasks.queueAdmin"
   member  = google_service_account.runner_manager.member
 }
 
