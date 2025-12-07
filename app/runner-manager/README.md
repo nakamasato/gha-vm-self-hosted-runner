@@ -73,6 +73,45 @@ Receives GitHub webhook events (specifically `workflow_job.queued`).
 }
 ```
 
+**Processing Flow:**
+```mermaid
+sequenceDiagram
+    participant GitHub
+    participant CloudRun as Runner Manager<br/>(Cloud Run)
+    participant ComputeEngine as VM Instance<br/>(Compute Engine)
+    participant CloudTasks as Task Queue<br/>(Cloud Tasks)
+
+    GitHub->>CloudRun: POST /github/webhook<br/>(workflow_job.queued)
+    CloudRun->>CloudRun: Verify X-Hub-Signature-256
+
+    alt Invalid signature
+        CloudRun-->>GitHub: 401 Unauthorized
+    end
+
+    CloudRun->>CloudRun: Check event type & action<br/>(workflow_job + queued)
+    CloudRun->>CloudRun: Extract job labels
+    CloudRun->>CloudRun: Check if all TARGET_LABELS<br/>are in job labels
+
+    alt Labels match
+        CloudRun->>ComputeEngine: Get VM instance status
+
+        alt VM not running
+            CloudRun->>ComputeEngine: Start VM
+            ComputeEngine-->>CloudRun: Operation initiated
+        else VM already running
+            ComputeEngine-->>CloudRun: Already running
+        end
+
+        CloudRun->>CloudTasks: Delete existing stop task<br/>(if exists)
+        CloudRun->>CloudTasks: Schedule new stop task<br/>(+15 minutes)
+        CloudTasks-->>CloudRun: Task scheduled
+    else Labels don't match
+        CloudRun->>CloudRun: Skip VM management
+    end
+
+    CloudRun-->>GitHub: 200 OK {"status": "ok"}
+```
+
 **Documentation:**
 - [GitHub Webhook Events: workflow_job](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job)
 
