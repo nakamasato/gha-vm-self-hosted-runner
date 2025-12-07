@@ -34,6 +34,9 @@ if [ ! -f /var/lib/cloud/instance/runner-tools-installed ]; then
     docker.io \
     docker-compose
 
+  # Create python symlink for compatibility
+  ln -sf /usr/bin/python3 /usr/bin/python
+
   # Clean up apt cache to reduce disk usage
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
