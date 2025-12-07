@@ -21,7 +21,11 @@ github_app_installation_id = "12345678" # Installation ID (same for all repos)
 # Format: [{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "...", "vm_instance_zone": "..."}]
 
 # Single repository example:
-runner_config = '[{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "github-runner", "vm_instance_zone": "asia-northeast1-a"}]'
+runner_config = <<-EOT
+[{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "github-runner", "vm_instance_zone": "asia-northeast1-a"}]
+EOT
 
 # Multiple repositories example:
-# runner_config = '[{"repo": "owner/repo1", "labels": ["self-hosted", "linux"], "vm_instance_name": "github-runner-linux", "vm_instance_zone": "asia-northeast1-a"}, {"repo": "owner/repo2", "labels": ["self-hosted", "gpu"], "vm_instance_name": "github-runner-gpu", "vm_instance_zone": "us-central1-a"}]'
+# runner_config = <<-EOT
+# [{"repo": "owner/repo1", "labels": ["self-hosted", "linux"], "vm_instance_name": "github-runner-linux", "vm_instance_zone": "asia-northeast1-a"}, {"repo": "owner/repo2", "labels": ["self-hosted", "gpu"], "vm_instance_name": "github-runner-gpu", "vm_instance_zone": "us-central1-a"}]
+# EOT
