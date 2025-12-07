@@ -68,8 +68,10 @@ The runner manager requires a GitHub App to check running workflow jobs before s
 cat > github-app-private-key.pem
 # Paste the private key content and press Ctrl+D
 
-# Store in Secret Manager (will be automated by Terraform later)
-gcloud secrets create github-app-private-key --data-file=github-app-private-key.pem
+# Store in Secret Manager (must be done before terraform apply)
+gcloud secrets create github-app-private-key \
+  --data-file=github-app-private-key.pem \
+  --project=YOUR_PROJECT_ID
 ```
 
 ## Setup Instructions

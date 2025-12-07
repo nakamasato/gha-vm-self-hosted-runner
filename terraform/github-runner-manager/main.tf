@@ -127,7 +127,7 @@ resource "google_cloud_run_v2_service" "runner_manager" {
         name = "GITHUB_APP_PRIVATE_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.github_app_private_key.secret_id
+            secret  = data.google_secret_manager_secret.github_app_private_key.secret_id
             version = "latest"
           }
         }
@@ -202,21 +202,17 @@ resource "google_secret_manager_secret_iam_member" "runner_manager_secret_access
 }
 
 # Secret Manager: GitHub App Private Key
-# Note: The private key content must be manually uploaded to Secret Manager before terraform apply
+# Note: This secret must be created manually before terraform apply
 # See README for instructions on creating and uploading the GitHub App private key
-resource "google_secret_manager_secret" "github_app_private_key" {
+data "google_secret_manager_secret" "github_app_private_key" {
   project   = var.project
   secret_id = "github-app-private-key"
-
-  replication {
-    auto {}
-  }
 }
 
 # IAM: Allow Cloud Run to access GitHub App private key
 resource "google_secret_manager_secret_iam_member" "github_app_private_key_access" {
   project   = var.project
-  secret_id = google_secret_manager_secret.github_app_private_key.secret_id
+  secret_id = data.google_secret_manager_secret.github_app_private_key.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.runner_manager.member
 }
