@@ -52,6 +52,30 @@ Receives GitHub webhook events (specifically `workflow_job.queued`).
 - `X-Hub-Signature-256`: GitHub webhook signature for verification
 - `X-GitHub-Event`: Event type
 
+**Payload Example:**
+```json
+{
+  "action": "queued",
+  "workflow_job": {
+    "id": 123456789,
+    "run_id": 987654321,
+    "status": "queued",
+    "labels": ["self-hosted", "linux", "x64"],
+    "runner_id": null,
+    "runner_name": null,
+    "runner_group_id": null,
+    "runner_group_name": null
+  },
+  "repository": {
+    "name": "example-repo",
+    "full_name": "org/example-repo"
+  }
+}
+```
+
+**Documentation:**
+- [GitHub Webhook Events: workflow_job](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job)
+
 **Response:**
 ```json
 {"status": "ok"}
