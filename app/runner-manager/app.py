@@ -103,6 +103,26 @@ def verify_signature(payload: bytes, signature_header: str) -> bool:
     return is_valid
 
 
+def should_handle_job(workflow_job: dict) -> bool:
+    """Check if this job matches our target labels.
+
+    Args:
+        workflow_job: workflow_job object from GitHub webhook payload
+
+    Returns:
+        True if all target labels are present in job labels, False otherwise
+    """
+    job_labels = workflow_job.get("labels", [])
+    has_all_target_labels = all(label in job_labels for label in TARGET_LABELS)
+
+    logger.info(
+        f"Job labels: {job_labels}, Target labels: {TARGET_LABELS}, "
+        f"Match: {has_all_target_labels}, Runner: {workflow_job.get('runner_name', 'N/A')}"
+    )
+
+    return has_all_target_labels
+
+
 async def start_runner_if_needed():
     """Start the runner VM if it's not already running."""
     try:
@@ -138,30 +158,29 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 
     logger.info(f"Received GitHub event: {event}, action: {payload.get('action')}")
 
-    if event == "workflow_job" and payload.get("action") == "queued":
-        # Check if this job matches our target labels
+    if event == "workflow_job":
         workflow_job = payload.get("workflow_job", {})
-        job_labels = workflow_job.get("labels", [])
+        action = payload.get("action")
 
-        # Check if all target labels are present in job labels
-        has_all_target_labels = all(label in job_labels for label in TARGET_LABELS)
+        if action == "queued":
+            # Check if this job matches our target labels
+            if should_handle_job(workflow_job):
+                # VM起動（必要なら）
+                await start_runner_if_needed()
+            else:
+                logger.info(
+                    f"Skipping VM start: job labels do not match target labels {TARGET_LABELS}"
+                )
 
-        logger.info(
-            f"Job labels: {job_labels}, Target labels: {TARGET_LABELS}, "
-            f"Match: {has_all_target_labels}, Runner: {workflow_job.get('runner_name', 'N/A')}"
-        )
-
-        if has_all_target_labels:
-            # VM起動（必要なら）
-            await start_runner_if_needed()
-
-            # 古いstopタスクを削除して新しいタスクをスケジュール
-            await schedule_stop_task()
-        else:
-            logger.info(
-                f"Skipping VM management: job labels {job_labels} do not match "
-                f"target labels {TARGET_LABELS}"
-            )
+        elif action == "completed":
+            # Check if this job matches our target labels
+            if should_handle_job(workflow_job):
+                # Schedule stop task after job completion
+                await schedule_stop_task()
+            else:
+                logger.info(
+                    f"Skipping stop task scheduling: job labels do not match target labels {TARGET_LABELS}"
+                )
 
     return {"status": "ok"}
 

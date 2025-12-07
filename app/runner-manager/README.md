@@ -5,8 +5,9 @@ FastAPI-based Cloud Run service that manages GitHub Actions self-hosted runner V
 ## Overview
 
 This service receives GitHub webhook events and automatically manages the VM instance lifecycle:
-- Starts the VM when workflows are queued
-- Schedules automatic shutdown after configurable inactivity period
+- Starts the VM when workflows are queued (`workflow_job.queued`)
+- Schedules automatic shutdown after job completion (`workflow_job.completed`)
+- VM stops after configurable inactivity period (default: 15 minutes after last job completion)
 - Prevents unnecessary compute costs by stopping idle VMs
 
 ## Architecture
@@ -14,7 +15,8 @@ This service receives GitHub webhook events and automatically manages the VM ins
 ```mermaid
 graph TB
     subgraph GitHub
-        WH[Webhook: workflow_job.queued]
+        WH1[Webhook: workflow_job.queued]
+        WH2[Webhook: workflow_job.completed]
     end
 
     subgraph "Cloud Run Service"
@@ -24,16 +26,17 @@ graph TB
     end
 
     subgraph "Cloud Tasks"
-        CT[Stop VM Task<br/>Scheduled +15min]
+        CT[Stop VM Task<br/>Scheduled +15min<br/>after job completion]
     end
 
     subgraph "Compute Engine"
         VM[Runner VM]
     end
 
-    WH -->|webhook event| EP1
-    EP1 -->|if needed| EP2
-    EP1 -->|schedule task<br/>delete old task| CT
+    WH1 -->|queued event| EP1
+    WH2 -->|completed event| EP1
+    EP1 -->|if VM stopped| EP2
+    EP1 -->|schedule stop task| CT
     EP2 -->|start VM| VM
     CT -->|after 15min| EP3
     EP3 -->|stop VM| VM
@@ -46,7 +49,11 @@ graph TB
 ## Endpoints
 
 ### `POST /github/webhook`
-Receives GitHub webhook events (specifically `workflow_job.queued`).
+Receives GitHub webhook events for VM lifecycle management.
+
+**Supported Events:**
+- `workflow_job.queued` - Starts VM when a job is queued
+- `workflow_job.completed` - Schedules VM stop after job completion
 
 **Headers:**
 - `X-Hub-Signature-256`: GitHub webhook signature for verification
@@ -74,6 +81,12 @@ Receives GitHub webhook events (specifically `workflow_job.queued`).
 ```
 
 **Processing Flow:**
+
+The service handles two webhook events to manage VM lifecycle:
+
+1. **workflow_job.queued** - Starts VM when a job is queued
+2. **workflow_job.completed** - Schedules VM stop after job completion
+
 ```mermaid
 sequenceDiagram
     participant GitHub
@@ -81,6 +94,7 @@ sequenceDiagram
     participant ComputeEngine as VM Instance<br/>(Compute Engine)
     participant CloudTasks as Task Queue<br/>(Cloud Tasks)
 
+    Note over GitHub,CloudTasks: workflow_job.queued event
     GitHub->>CloudRun: POST /github/webhook<br/>(workflow_job.queued)
     CloudRun->>CloudRun: Verify X-Hub-Signature-256
 
@@ -88,9 +102,7 @@ sequenceDiagram
         CloudRun-->>GitHub: 401 Unauthorized
     end
 
-    CloudRun->>CloudRun: Check event type & action<br/>(workflow_job + queued)
-    CloudRun->>CloudRun: Extract job labels
-    CloudRun->>CloudRun: Check if all TARGET_LABELS<br/>are in job labels
+    CloudRun->>CloudRun: should_handle_job()<br/>Check if all TARGET_LABELS<br/>are in job labels
 
     alt Labels match
         CloudRun->>ComputeEngine: Get VM instance status
@@ -101,15 +113,31 @@ sequenceDiagram
         else VM already running
             ComputeEngine-->>CloudRun: Already running
         end
-
-        CloudRun->>CloudTasks: Delete existing stop task<br/>(if exists)
-        CloudRun->>CloudTasks: Schedule new stop task<br/>(+15 minutes)
-        CloudTasks-->>CloudRun: Task scheduled
     else Labels don't match
-        CloudRun->>CloudRun: Skip VM management
+        CloudRun->>CloudRun: Skip VM start
     end
 
     CloudRun-->>GitHub: 200 OK {"status": "ok"}
+
+    Note over GitHub,CloudTasks: workflow_job.completed event
+    GitHub->>CloudRun: POST /github/webhook<br/>(workflow_job.completed)
+    CloudRun->>CloudRun: Verify X-Hub-Signature-256
+    CloudRun->>CloudRun: should_handle_job()<br/>Check if all TARGET_LABELS<br/>are in job labels
+
+    alt Labels match
+        CloudRun->>CloudTasks: Delete existing stop task<br/>(if exists)
+        CloudRun->>CloudTasks: Schedule new stop task<br/>(+15 minutes after completion)
+        CloudTasks-->>CloudRun: Task scheduled
+    else Labels don't match
+        CloudRun->>CloudRun: Skip stop task scheduling
+    end
+
+    CloudRun-->>GitHub: 200 OK {"status": "ok"}
+
+    Note over CloudTasks,ComputeEngine: After 15 minutes of inactivity
+    CloudTasks->>CloudRun: POST /runner/stop
+    CloudRun->>ComputeEngine: Stop VM
+    ComputeEngine-->>CloudRun: VM stopped
 ```
 
 **Documentation:**
