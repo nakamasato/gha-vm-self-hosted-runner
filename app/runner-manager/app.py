@@ -225,7 +225,7 @@ async def schedule_stop_task():
             tasks_client.delete_task(name=task_name)
             logger.info(f"Deleted existing stop task: {task_name}")
         except Exception as e:
-            logger.debug(f"No existing task to delete: {e}")
+            logger.info(f"No existing task to delete: {e}")
 
         # 15分後のタスクを作成
         schedule_time = datetime.now(timezone.utc) + timedelta(minutes=VM_INACTIVE_MINUTES)
