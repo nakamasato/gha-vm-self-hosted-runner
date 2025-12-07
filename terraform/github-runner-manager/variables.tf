@@ -40,9 +40,14 @@ variable "github_app_id" {
   type        = string
 }
 
+variable "github_installation_id" {
+  description = "GitHub App Installation ID (same for all repositories)"
+  type        = string
+}
+
 # Runner Configuration
 variable "runner_config" {
-  description = "JSON array of runner configurations. Each entry contains: repo, labels, vm_instance_name, vm_instance_zone, github_installation_id"
+  description = "JSON array of runner configurations. Each entry contains: repo, labels, vm_instance_name, vm_instance_zone"
   type        = string
-  # Example: '[{"repo": "owner/repo1", "labels": ["self-hosted"], "vm_instance_name": "github-runner-1", "vm_instance_zone": "asia-northeast1-a", "github_installation_id": "12345678"}]'
+  # Example: '[{"repo": "owner/repo1", "labels": ["self-hosted"], "vm_instance_name": "github-runner-1", "vm_instance_zone": "asia-northeast1-a"}]'
 }

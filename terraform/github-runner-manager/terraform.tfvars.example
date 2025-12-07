@@ -13,14 +13,15 @@ inactive_minutes = "15"
 deletion_protection = true  # Set to false to allow terraform destroy without extra steps
 
 # GitHub App Configuration
-github_app_id = "123456"  # Your GitHub App ID
+github_app_id          = "123456"   # Your GitHub App ID
+github_installation_id = "12345678" # Installation ID (same for all repos)
 
 # Runner Configuration (JSON array)
 # Each entry maps a repository + labels to a specific VM instance
-# Format: [{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "...", "vm_instance_zone": "...", "github_installation_id": "..."}]
+# Format: [{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "...", "vm_instance_zone": "..."}]
 
 # Single repository example:
-runner_config = '[{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "github-runner", "vm_instance_zone": "asia-northeast1-a", "github_installation_id": "12345678"}]'
+runner_config = '[{"repo": "owner/repo", "labels": ["self-hosted"], "vm_instance_name": "github-runner", "vm_instance_zone": "asia-northeast1-a"}]'
 
 # Multiple repositories example:
-# runner_config = '[{"repo": "owner/repo1", "labels": ["self-hosted", "linux"], "vm_instance_name": "github-runner-linux", "vm_instance_zone": "asia-northeast1-a", "github_installation_id": "12345678"}, {"repo": "owner/repo2", "labels": ["self-hosted", "gpu"], "vm_instance_name": "github-runner-gpu", "vm_instance_zone": "us-central1-a", "github_installation_id": "87654321"}]'
+# runner_config = '[{"repo": "owner/repo1", "labels": ["self-hosted", "linux"], "vm_instance_name": "github-runner-linux", "vm_instance_zone": "asia-northeast1-a"}, {"repo": "owner/repo2", "labels": ["self-hosted", "gpu"], "vm_instance_name": "github-runner-gpu", "vm_instance_zone": "us-central1-a"}]'
