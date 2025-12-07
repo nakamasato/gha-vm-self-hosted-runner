@@ -1,0 +1,37 @@
+# GCP Project Configuration
+project = "your-gcp-project-id"
+zone    = "asia-northeast1-a"
+
+# VM Instance Configuration
+instance_name = "github-runner"
+machine_type  = "e2-standard-2"  # 2vCPU, 8GB RAM
+
+# Disk Configuration
+boot_disk_size_gb = 20
+boot_disk_type    = "pd-standard"  # or "pd-ssd" for better performance
+
+# Network Configuration
+network            = "default"
+enable_external_ip = true
+# network_tags = ["github-runner", "http-server"]  # Optional firewall tags
+
+# GitHub Runner Configuration
+github_runner_token_secret = "github-runner-token" # Secret Manager secret name
+github_org                 = "your-github-org"
+github_repo                = "your-repo"           # Required for repository-level runner
+
+# Service Account Configuration
+service_account_id = "github-runner"
+# roles = [
+#   "roles/storage.objectViewer",  # Example: Read GCS objects
+#   "roles/logging.logWriter",     # Example: Write logs
+# ]
+
+# Labels and Metadata
+labels = {
+  purpose = "github-runner"
+  managed = "terraform"
+}
+# additional_metadata = {
+#   runner-labels = "linux,docker"
+# }
