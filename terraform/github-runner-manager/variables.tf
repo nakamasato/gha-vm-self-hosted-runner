@@ -52,3 +52,19 @@ variable "deletion_protection" {
   type        = bool
   default     = true
 }
+
+# GitHub App Configuration
+variable "github_app_id" {
+  description = "GitHub App ID for querying workflow runs"
+  type        = string
+}
+
+variable "github_app_installation_id" {
+  description = "GitHub App Installation ID"
+  type        = string
+}
+
+variable "github_repo" {
+  description = "GitHub repository to monitor (format: owner/repo)"
+  type        = string
+}

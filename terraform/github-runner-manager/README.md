@@ -33,6 +33,40 @@ gcloud services enable compute.googleapis.com
 
 Terraform >= 1.5.0
 
+### 4. GitHub App Configuration
+
+The runner manager requires a GitHub App to check running workflow jobs before stopping the VM.
+
+**Create GitHub App:**
+
+1. Go to your GitHub organization/user Settings > Developer settings > GitHub Apps > New GitHub App
+2. Configure the app:
+   - **Name**: `GitHub Runner Manager` (or any name you prefer)
+   - **Homepage URL**: Your Cloud Run URL (can be updated later)
+   - **Webhook**: Uncheck "Active" (we use webhook separately)
+   - **Repository permissions**:
+     - Actions: Read-only (to query workflow runs)
+   - **Where can this GitHub App be installed?**: Only on this account
+3. Create the app and note down:
+   - **App ID**: Found on the app settings page
+   - **Private Key**: Generate and download from the app settings page
+4. Install the app:
+   - Go to "Install App" in the left sidebar
+   - Install on your organization/user account
+   - Select repositories (or all repositories)
+   - Note down the **Installation ID** from the URL: `https://github.com/settings/installations/{installation_id}`
+
+**Prepare credentials:**
+
+```bash
+# Save the private key
+cat > github-app-private-key.pem
+# Paste the private key content and press Ctrl+D
+
+# Store in Secret Manager (will be automated by Terraform later)
+gcloud secrets create github-app-private-key --data-file=github-app-private-key.pem
+```
+
 ## Setup Instructions
 
 ### 1. Configure Terraform Variables
@@ -50,6 +84,11 @@ vim terraform.tfvars
 project                = "your-gcp-project-id"
 zone                   = "asia-northeast1-a"  # Zone where your VM is located
 runner_instance_name   = "github-runner"      # Name of your existing VM
+
+# GitHub App configuration
+github_app_id          = "123456"             # Your GitHub App ID
+github_app_installation_id = "12345678"       # Installation ID from GitHub
+github_repo            = "owner/repo"         # Repository to monitor (format: owner/repo)
 ```
 
 **Optional variables:**
