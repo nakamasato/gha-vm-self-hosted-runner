@@ -16,7 +16,7 @@ This project addresses common challenges when running GitHub Actions self-hosted
 By combining GCP VM instances with Cloud Run and Cloud Tasks, this solution provides:
 - Pay only for what you use (VM only runs during active workflows)
 - Automatic startup when workflows are queued
-- Automatic shutdown after configurable inactivity period (default: 15 minutes)
+- Automatic shutdown after configurable inactivity period (default: 3 minutes)
 - Persistent runner configuration across VM restarts
 
 ### When to Use This vs. Actions Runner Controller
@@ -47,7 +47,7 @@ graph TB
 
     subgraph "GCP - Cloud Tasks"
         CT[Task Queue]
-        TASK[Stop VM Task<br/>Scheduled +15min]
+        TASK[Stop VM Task<br/>Scheduled +N min]
     end
 
     subgraph "GCP - Compute Engine"
@@ -60,7 +60,7 @@ graph TB
     EP1 -->|1. Start VM if needed| EP2
     EP1 -->|2. Schedule stop task| CT
     EP2 -->|Compute API| VM
-    CT -->|After 15min| TASK
+    CT -->|After N min| TASK
     TASK -->|POST| EP3
     EP3 -->|Compute API| VM
     VM -.->|runs| RUNNER
@@ -75,17 +75,17 @@ graph TB
 
 1. **Workflow Queued**: GitHub sends a `workflow_job.queued` webhook event to Cloud Run
 2. **VM Start**: Runner Manager starts the VM if it's not already running
-3. **Schedule Stop**: Creates/updates a Cloud Task to stop the VM after 15 minutes of inactivity
+3. **Schedule Stop**: Creates a Cloud Task to stop the VM after configured inactivity period (default: 3 minutes)
 4. **Execute Workflow**: The runner executes the queued workflow
-5. **Auto Stop**: If no new workflows arrive within 15 minutes, Cloud Tasks triggers VM shutdown
-6. **Repeat**: Each new workflow resets the 15-minute timer
+5. **Auto Stop**: If no new workflows arrive within the inactivity period, Cloud Tasks triggers VM shutdown
+6. **Repeat**: Each new workflow resets the inactivity timer
 
 ## Features
 
 - **Automatic VM Lifecycle Management**: Start on demand, stop after inactivity
 - **Cost Efficient**: Pay only for compute time during active workflows
 - **Persistent Configuration**: Runner configuration survives VM restarts
-- **Flexible Scope**: Support both organization-wide and repository-specific runners
+- **Multi-Repository Support**: Single manager can handle multiple repositories with separate VMs
 - **Infrastructure as Code**: Everything managed via Terraform
 - **Secure Token Management**: GitHub runner tokens stored in Secret Manager
 - **Configurable Inactivity Timeout**: Customize shutdown delay to match your workflow patterns
@@ -228,7 +228,7 @@ Terraform module that creates a persistent GCP Compute Engine VM configured as a
 
 - Creates VM instance with customizable machine type and disk size
 - Automatically installs and configures GitHub Actions runner on first boot
-- Supports both organization-wide and repository-specific runners
+- Supports repository-level runners only
 - Retrieves runner token from Secret Manager
 - Includes startup script for automatic runner initialization
 
@@ -287,8 +287,7 @@ This project currently uses a static GitHub token stored in Secret Manager, whic
 
 3. **Recommended Approach**:
    - Use **Fine-Grained PATs** with the minimum required permissions:
-     - Organization-wide runners: `Organization permissions > Self-hosted runners: Read and write`
-     - Repository-specific runners: `Repository permissions > Administration: Read and write`
+     - Repository-level runners: `Repository permissions > Administration: Read and write`
    - Set token expiration to the maximum allowed period (1 year)
    - Implement a process to rotate tokens before expiration
 
