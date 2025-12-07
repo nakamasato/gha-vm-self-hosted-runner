@@ -181,7 +181,7 @@ Service information.
 | `VM_INACTIVE_MINUTES` | Minutes before auto-stop | No | `15` (default) |
 | `CLOUD_TASK_LOCATION` | Cloud Tasks location | Yes | `asia-northeast1` |
 | `CLOUD_TASK_QUEUE_NAME` | Cloud Tasks queue name | Yes | `runner-manager` |
-| `CLOUD_TASK_SERVICE_ACCOUNT_EMAIL` | Service account for Cloud Tasks | Yes | `runner-manager@project.iam.gserviceaccount.com` |
+| `CLOUD_TASK_SERVICE_ACCOUNT_EMAIL` | Service account for Cloud Tasks (for future OIDC validation) | No | `runner-manager@project.iam.gserviceaccount.com` |
 | `CLOUD_RUN_SERVICE_URL` | Cloud Run service URL | Yes | `https://service-xxx.run.app` |
 | `GITHUB_WEBHOOK_SECRET` | GitHub webhook secret | Yes | `your-secret` |
 | `TARGET_LABELS` | Comma-separated runner labels to target | No | `self-hosted` (default)<br/>`self-hosted,linux`<br/>`self-hosted,gpu` |

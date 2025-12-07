@@ -141,15 +141,6 @@ resource "google_cloud_run_v2_service_iam_member" "runner_manager_invoker" {
   member   = "allUsers"
 }
 
-# Allow runner-manager service account to invoke Cloud Run (for Cloud Tasks)
-resource "google_cloud_run_v2_service_iam_member" "runner_manager_self_invoker" {
-  project  = var.project
-  location = local.region
-  name     = google_cloud_run_v2_service.runner_manager.name
-  role     = "roles/run.invoker"
-  member   = google_service_account.runner_manager.member
-}
-
 # Generate random webhook secret
 resource "random_string" "webhook_secret" {
   length  = 32
