@@ -63,7 +63,7 @@ tasks_client = tasks_v2.CloudTasksClient()
 compute_client = compute_v1.InstancesClient()
 
 
-def verify_signature(payload: bytes, signature_header: str) -> bool:
+def verify_github_signature(payload: bytes, signature_header: str) -> bool:
     """Verify GitHub webhook signature using HMAC SHA256.
 
     Args:
@@ -105,8 +105,8 @@ def verify_signature(payload: bytes, signature_header: str) -> bool:
     return is_valid
 
 
-def verify_oidc_token(authorization_header: str | None) -> dict:
-    """Verify OIDC token from Cloud Tasks or gcloud user.
+def verify_google_oidc_token(authorization_header: str | None) -> dict:
+    """Verify Google OIDC token from Cloud Tasks or gcloud user.
 
     Args:
         authorization_header: Value from Authorization header (Bearer token)
@@ -187,7 +187,7 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
     body = await request.body()
 
     # Webhook検証
-    if not verify_signature(body, x_hub_signature_256):
+    if not verify_github_signature(body, x_hub_signature_256):
         raise HTTPException(status_code=401, detail="Invalid signature")
 
     payload = await request.json()
@@ -224,8 +224,8 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 @app.post("/runner/start")
 async def start_runner(authorization: str = Header(None)):
     """VMを起動"""
-    # Verify OIDC token (from Cloud Tasks or gcloud user)
-    verify_oidc_token(authorization)
+    # Verify Google OIDC token (from Cloud Tasks or gcloud user)
+    verify_google_oidc_token(authorization)
 
     try:
         logger.info(f"Start endpoint called for VM: {VM_INSTANCE_NAME}")
@@ -251,8 +251,8 @@ async def start_runner(authorization: str = Header(None)):
 @app.post("/runner/stop")
 async def stop_runner(authorization: str = Header(None)):
     """VMを停止"""
-    # Verify OIDC token (from Cloud Tasks or gcloud user)
-    verify_oidc_token(authorization)
+    # Verify Google OIDC token (from Cloud Tasks or gcloud user)
+    verify_google_oidc_token(authorization)
 
     try:
         logger.info(f"Stop endpoint called for VM: {VM_INSTANCE_NAME}")
