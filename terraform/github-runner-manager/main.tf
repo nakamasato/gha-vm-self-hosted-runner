@@ -41,6 +41,15 @@ resource "google_cloud_tasks_queue_iam_member" "runner_manager_tasks_deleter" {
   member   = google_service_account.runner_manager.member
 }
 
+# IAM: Cloud Run Invoker (for Cloud Tasks to invoke /runner/stop)
+resource "google_cloud_run_v2_service_iam_member" "runner_manager_self_invoker" {
+  project  = var.project
+  location = local.region
+  name     = google_cloud_run_v2_service.runner_manager.name
+  role     = "roles/run.invoker"
+  member   = google_service_account.runner_manager.member
+}
+
 # Cloud Tasks Queue
 resource "google_cloud_tasks_queue" "runner_manager" {
   project  = var.project

@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from google.api_core.exceptions import NotFound
+from google.auth.transport import requests as google_requests
 from google.cloud import compute_v1, tasks_v2
 from google.cloud.logging import Client
+from google.oauth2 import id_token
 
 # Configure logging based on environment
 # K_SERVICE is automatically set by Cloud Run
@@ -47,8 +49,7 @@ required_vars = {
     "VM_INSTANCE_NAME": VM_INSTANCE_NAME,
     "CLOUD_TASK_LOCATION": CLOUD_TASK_LOCATION,
     "CLOUD_TASK_QUEUE_NAME": CLOUD_TASK_QUEUE_NAME,
-    # TODO: Make this required when OIDC token validation is implemented
-    # "CLOUD_TASK_SERVICE_ACCOUNT_EMAIL": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL,
+    "CLOUD_TASK_SERVICE_ACCOUNT_EMAIL": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL,
     "CLOUD_RUN_SERVICE_URL": CLOUD_RUN_SERVICE_URL,
     "GITHUB_WEBHOOK_SECRET": GITHUB_WEBHOOK_SECRET,
 }
@@ -102,6 +103,41 @@ def verify_signature(payload: bytes, signature_header: str) -> bool:
         logger.warning("Invalid webhook signature")
 
     return is_valid
+
+
+def verify_oidc_token(authorization_header: str | None) -> dict:
+    """Verify OIDC token from Cloud Tasks or gcloud user.
+
+    Args:
+        authorization_header: Value from Authorization header (Bearer token)
+
+    Returns:
+        Token claims if valid
+
+    Raises:
+        HTTPException: If token is missing or invalid
+    """
+    if not authorization_header:
+        logger.warning("Missing Authorization header")
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+
+    if not authorization_header.startswith("Bearer "):
+        logger.warning("Invalid Authorization header format")
+        raise HTTPException(status_code=401, detail="Invalid authorization header format")
+
+    token = authorization_header.split("Bearer ", 1)[1]
+
+    try:
+        # Verify token signature and claims
+        request = google_requests.Request()
+        claims = id_token.verify_oauth2_token(token, request, audience=CLOUD_RUN_SERVICE_URL)
+
+        logger.info(f"OIDC token verified for: {claims.get('email', 'unknown')}")
+        return claims
+
+    except ValueError as e:
+        logger.warning(f"Invalid OIDC token: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}") from e
 
 
 def should_handle_job(workflow_job: dict) -> bool:
@@ -186,8 +222,11 @@ async def github_webhook(request: Request, x_hub_signature_256: str = Header(Non
 
 
 @app.post("/runner/start")
-async def start_runner():
+async def start_runner(authorization: str = Header(None)):
     """VMを起動"""
+    # Verify OIDC token (from Cloud Tasks or gcloud user)
+    verify_oidc_token(authorization)
+
     try:
         logger.info(f"Start endpoint called for VM: {VM_INSTANCE_NAME}")
         instance = compute_client.get(
@@ -210,8 +249,11 @@ async def start_runner():
 
 
 @app.post("/runner/stop")
-async def stop_runner():
+async def stop_runner(authorization: str = Header(None)):
     """VMを停止"""
+    # Verify OIDC token (from Cloud Tasks or gcloud user)
+    verify_oidc_token(authorization)
+
     try:
         logger.info(f"Stop endpoint called for VM: {VM_INSTANCE_NAME}")
         instance = compute_client.get(
@@ -268,8 +310,7 @@ async def schedule_stop_task():
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": f"{CLOUD_RUN_SERVICE_URL}/runner/stop",
-                # TODO: Implement OIDC token validation on /runner/stop endpoint
-                # "oidc_token": {"service_account_email": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL},
+                "oidc_token": {"service_account_email": CLOUD_TASK_SERVICE_ACCOUNT_EMAIL},
             },
             "schedule_time": schedule_time,
         }
