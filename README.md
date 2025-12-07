@@ -273,7 +273,7 @@ For **organization-level self-hosted runners**, the current implementation may n
 
 ### GitHub Self-Hosted Runner Registration Token
 
-The VM module uses a GitHub token for registering the self-hosted runner during VM initialization. This token is stored in Secret Manager and has the following limitations:
+To register the self-hosted runner on the VM, you need to obtain a **runner registration token** from GitHub's web UI (Repository Settings > Actions > Runners > New self-hosted runner). This token must be stored in Secret Manager before deploying the VM, and has the following limitations:
 
 1. **Token Expiration**:
    - **Registration tokens from GitHub UI**: Expire after **1 hour**
