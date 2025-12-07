@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from google.api_core.exceptions import NotFound
 from google.cloud import compute_v1, tasks_v2
 from google.cloud.logging import Client
 
@@ -240,8 +241,11 @@ async def schedule_stop_task():
         try:
             tasks_client.delete_task(name=task_name)
             logger.info(f"Deleted existing stop task: {task_name}")
+        except NotFound:
+            logger.debug("No existing task to delete (this is normal)")
         except Exception as e:
-            logger.info(f"No existing task to delete: {e}")
+            logger.error(f"Unexpected error deleting task: {e}")
+            raise
 
         # 15分後のタスクを作成
         schedule_time = datetime.now(timezone.utc) + timedelta(minutes=VM_INACTIVE_MINUTES)
