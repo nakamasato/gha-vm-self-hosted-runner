@@ -3,7 +3,7 @@
 Cost-efficient GitHub Actions self-hosted runner on GCP with automatic VM lifecycle management.
 
 > [!IMPORTANT]
-> This runner manager supports **repository-level self-hosted runners only**. Organization-level runners are not supported because the GitHub API does not provide accurate busy status for runners shared across multiple repositories in an organization.
+> This runner manager currently supports **repository-level self-hosted runners only**. Organization-level runners are not yet implemented in the current version.
 
 ## Motivation
 
@@ -11,13 +11,14 @@ This project addresses common challenges when running GitHub Actions self-hosted
 
 - **Cost Optimization**: Only run VMs when needed. Automatically stop VMs after periods of inactivity to minimize compute costs.
 - **IP Address Control**: Manage static IP requirements for accessing restricted resources (databases, APIs with IP allowlists, etc.).
+- **CI/CD Speed**: Accelerate build times by utilizing local cache (dependencies, Docker layers, build artifacts) that persists across workflow runs.
 - **Simplicity**: Simple and straightforward setup using Terraform and a lightweight Cloud Run service.
 
 By combining GCP VM instances with Cloud Run and Cloud Tasks, this solution provides:
 - Pay only for what you use (VM only runs during active workflows)
 - Automatic startup when workflows are queued
 - Automatic shutdown after configurable inactivity period (default: 3 minutes)
-- Persistent runner configuration across VM restarts
+- Persistent storage across VM restarts (runner configuration, local cache, build artifacts)
 
 ### When to Use GHA VM Self-Hosted Runner vs. Actions Runner Controller
 
@@ -26,6 +27,7 @@ For **large-scale deployments** with high workflow concurrency and dynamic scali
 This project is ideal for:
 - **Personal development** or small team projects with moderate workflow frequency
 - **Static IP requirements**: Scenarios where workflows need to access IP-restricted resources (databases, APIs, internal services with allowlists)
+- **Faster CI/CD workflows**: Projects that benefit from persistent local cache to speed up builds
 - **Simpler infrastructure**: Teams who want runner management without the complexity of Kubernetes
 - **Cost-conscious projects**: Minimizing costs by running a single persistent VM that starts/stops automatically
 
@@ -265,42 +267,11 @@ Terraform configuration for deploying the Runner Manager service on GCP.
 
 [See detailed documentation →](./terraform/github-runner-manager/README.md)
 
-## Limitations
+## Limitations & Future Improvements
 
-### Runner Scope
-
-**Repository-level runners only**: The runner manager is designed for **repository-level self-hosted runners**. It checks the busy status of a specific runner registered to a repository using the GitHub API.
-
-For **organization-level self-hosted runners**, the current implementation may not return accurate runner status, as organization runners can be assigned to jobs from different repositories within the organization. If you need to manage organization-level runners, you may need to modify the implementation to check organization runners instead of repository runners.
-
-### GitHub Self-Hosted Runner Registration Token
-
-To register the self-hosted runner on the VM, you need to obtain a **runner registration token** from GitHub's web UI (Repository Settings > Actions > Runners > New self-hosted runner). This token must be stored in Secret Manager before deploying the VM, and has the following limitations:
-
-1. **Token Expiration**:
-   - **Registration tokens from GitHub UI**: Expire after **1 hour**
-   - When recreating VM instances, you need to obtain a new token from GitHub UI
-   - **Fine-Grained Personal Access Tokens (PATs)**: Expire after a maximum of 1 year
-   - **Classic PATs**: Can be set to never expire, but are less secure
-
-2. **Manual Token Rotation Required**:
-   - The token stored in Secret Manager must be manually updated before expiration
-   - No automatic token refresh mechanism is currently implemented
-   - Expired tokens will prevent new runner registrations
-
-3. **Recommended Approach**:
-   - Use **Fine-Grained PATs** with the minimum required permissions:
-     - Repository-level runners: `Repository permissions > Administration: Read and write`
-   - Set token expiration to the maximum allowed period (1 year)
-   - Implement a process to rotate tokens before expiration
-
-### Future Improvements (TODO)
-
-For a more robust solution, consider implementing:
-- **GitHub App authentication**: Provides better security and automatic token refresh
-- **Fine-Grained PAT configuration support**: Streamlined setup process for PAT-based authentication
-- **Automated token rotation**: Using Cloud Functions or Cloud Run to periodically refresh tokens
-- **Monitoring**: Alert when tokens are approaching expiration
+1. **Organization-level runner support**: Currently supports repository-level runners only. See [docs/todo-support-organization-self-hosted-runner.md](./docs/todo-support-organization-self-hosted-runner.md) for implementation details.
+2. **Runner registration token management**: Manual token rotation is required due to expiration. See [docs/todo-self-hosted-runner-registration-token.md](./docs/todo-self-hosted-runner-registration-token.md) for proposed improvements.
+3. **VM lifecycle notifications**: Add Slack notifications for VM start/stop events.
 
 ## Contributing
 
