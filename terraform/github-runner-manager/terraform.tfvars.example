@@ -12,6 +12,15 @@ inactive_minutes = "15"
 # Deletion Protection
 deletion_protection = true  # Set to false to allow terraform destroy without extra steps
 
+# Cloud Run Resource Configuration
+cpu_limit    = "1"      # CPU limit: "1", "2", "4", etc.
+memory_limit = "512Mi"  # Memory limit: "512Mi", "1Gi", "2Gi", etc.
+
+# CPU Allocation Mode
+# true  = request-based (CPU only allocated during request processing) - cost-effective, default
+# false = instance-based (CPU always allocated) - faster response, higher cost
+cpu_idle = true
+
 # GitHub App Configuration
 github_app_id              = "123456"   # Your GitHub App ID
 github_app_installation_id = "12345678" # Installation ID (same for all repos)
