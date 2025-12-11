@@ -34,6 +34,24 @@ variable "deletion_protection" {
   default     = true
 }
 
+variable "cpu_idle" {
+  description = "CPU allocation mode for Cloud Run: true for request-based (CPU only allocated during request processing), false for instance-based (CPU always allocated). Default is request-based."
+  type        = bool
+  default     = true
+}
+
+variable "cpu_limit" {
+  description = "CPU limit for Cloud Run container (e.g., '1', '2', '4')"
+  type        = string
+  default     = "1"
+}
+
+variable "memory_limit" {
+  description = "Memory limit for Cloud Run container (e.g., '512Mi', '1Gi', '2Gi')"
+  type        = string
+  default     = "512Mi"
+}
+
 # GitHub App Configuration
 variable "github_app_id" {
   description = "GitHub App ID for authentication"
